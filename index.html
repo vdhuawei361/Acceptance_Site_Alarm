@@ -296,6 +296,7 @@ var firebaseConfig = {
   appId: "1:530659483836:web:0dbfdf7ca4b5807fd870b9"
 };
 var db = null;
+var COLLECTION = "alarms"; // separate from the original SiteTrack app's "issues" collection — own, independent dataset
 if(FIREBASE_ENABLED){
   try{
     firebase.initializeApp(firebaseConfig);
@@ -349,7 +350,7 @@ function loadAll(){
   }
 }
 function initFirestoreSync(){
-  db.collection("issues").onSnapshot(function(snapshot){
+  db.collection(COLLECTION).onSnapshot(function(snapshot){
     issues = [];
     snapshot.forEach(function(doc){
       var d = doc.data();
@@ -394,7 +395,7 @@ function addIssue(site, text){
   var owner = currentUser || "Unknown";
   var iss = { id: nextId(), site: site, issue: text, status: "Open", ts: now, updated: now, progress: [], owner: owner };
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner })
+    db.collection(COLLECTION).doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner })
       .catch(function(err){ console.error(err); showToast("Could not save — check connection"); });
     // local `issues` array updates itself via the onSnapshot listener
   }else{
@@ -407,7 +408,7 @@ function addProgressNote(id, note){
   var now = Date.now();
   var entry = { ts: now, note: note, by: currentUser || "Unknown" };
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(id).update({
+    db.collection(COLLECTION).doc(id).update({
       progress: firebase.firestore.FieldValue.arrayUnion(entry),
       updated: now
     }).catch(function(err){ console.error(err); showToast("Could not save progress — check connection"); });
@@ -424,7 +425,7 @@ function addProgressNote(id, note){
 function updateIssueData(id, site, text){
   var now = Date.now();
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(id).update({ site: site, issue: text, updated: now })
+    db.collection(COLLECTION).doc(id).update({ site: site, issue: text, updated: now })
       .catch(function(err){ console.error(err); showToast("Could not update — check connection"); });
     return true;
   }
@@ -442,7 +443,7 @@ function toggleStatus(id){
   var who = currentUser || "Unknown";
   var statusEntry = { ts: now, note: "Status changed to "+newStatus, by: who };
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(id).update({
+    db.collection(COLLECTION).doc(id).update({
       status: newStatus, updated: now,
       progress: firebase.firestore.FieldValue.arrayUnion(statusEntry)
     }).catch(function(err){ console.error(err); showToast("Could not update — check connection"); });
@@ -456,7 +457,7 @@ function toggleStatus(id){
 }
 function deleteIssue(id){
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(id).delete()
+    db.collection(COLLECTION).doc(id).delete()
       .catch(function(err){ console.error(err); showToast("Could not delete — check connection"); });
   }else{
     issues = issues.filter(function(i){ return i.id!==id; });
@@ -1037,7 +1038,7 @@ function deleteProgressEntry(id, ts){
 function saveProgressArray(id, newProgress){
   var now = Date.now();
   if(FIREBASE_ENABLED){
-    db.collection("issues").doc(id).update({ progress: newProgress, updated: now })
+    db.collection(COLLECTION).doc(id).update({ progress: newProgress, updated: now })
       .then(function(){ showToast("Timeline updated"); if(progressEditingId===id) renderProgressHistory(id); })
       .catch(function(err){ console.error(err); showToast("Could not save — check connection"); });
   }else{
@@ -1182,7 +1183,7 @@ function restoreIssues(list){
   if(FIREBASE_ENABLED){
     var batch = db.batch();
     list.forEach(function(r){
-      var ref = db.collection("issues").doc(r.id);
+      var ref = db.collection(COLLECTION).doc(r.id);
       batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown" });
     });
     batch.commit()
