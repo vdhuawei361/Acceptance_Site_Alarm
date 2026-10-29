@@ -1600,7 +1600,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
       errEl.style.display = "block";
       return;
     }
