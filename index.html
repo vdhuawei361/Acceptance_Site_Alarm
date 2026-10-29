@@ -7,68 +7,91 @@
 <!-- Firebase (only used if FIREBASE_ENABLED is set to true near the top of the script below) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- SheetJS: parses real .xlsx/.xls files in-browser for the Excel import feature -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
-    --bg:#EEF0F5; --panel:#FFFFFF; --border:#E3E6EE; --accent:#4E8FE0; --accentDark:#3A76C4;
-    --open:#E0891E; --openFill:#FBEBD8; --closed:#1FA85C; --closedFill:#DCF3E6;
-    --muted:#9AA3B2; --text:#2E3542; --subtext:#78818F; --inputBg:#F4F5F9; --danger:#E0526B;
-    --shadow:#D7DBE4;
+    --bg:#060B16; --bg2:#0B1322;
+    --panel:rgba(16,25,43,.62); --panelSolid:#0F1829; --panelHi:rgba(255,255,255,.06);
+    --border:rgba(255,255,255,.09); --borderHi:rgba(255,255,255,.18);
+    --accent:#37D6C4; --accentDark:#1FAE9F; --accentGlow:rgba(55,214,196,.35);
+    --open:#F5A93D; --openFill:rgba(245,169,61,.16);
+    --closed:#33D17A; --closedFill:rgba(51,209,122,.16);
+    --muted:#6B7E98; --text:#E7EEF9; --subtext:#9FB0C8; --inputBg:rgba(255,255,255,.05);
+    --danger:#FB6F8D; --shadow:rgba(0,0,0,.55);
+    --mono:"SF Mono",Consolas,"Cascadia Code",monospace;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{color-scheme:dark;}
   html,body{height:100%; margin:0; overscroll-behavior:none;}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:var(--bg); color:var(--text); display:flex; flex-direction:column;
+    background:
+      radial-gradient(circle at 15% -8%, rgba(55,214,196,.14), transparent 48%),
+      radial-gradient(circle at 92% 6%, rgba(167,139,250,.11), transparent 42%),
+      radial-gradient(circle at 50% 110%, rgba(245,169,61,.08), transparent 50%),
+      var(--bg);
+    color:var(--text); display:flex; flex-direction:column;
     height:100vh; height:100dvh; overflow:hidden;
   }
   /* ---- header ---- */
-  header{background:var(--panel); border-bottom:1px solid var(--border); padding:10px 14px;
-    padding-top:max(10px, env(safe-area-inset-top)); flex-shrink:0;}
+  header{background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-bottom:1px solid var(--border); box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 24px var(--shadow);
+    padding:10px 14px; padding-top:max(10px, env(safe-area-inset-top)); flex-shrink:0; position:relative; z-index:2;}
   .header-row{display:flex; align-items:center; justify-content:space-between;}
   .brand{display:flex; align-items:center; gap:8px;}
-  .brand .icon{font-size:20px;}
+  .brand .icon{font-size:20px; filter:drop-shadow(0 0 8px var(--accentGlow));}
   .brand .titles{line-height:1.15;}
-  .brand .titles .t1{font-weight:700; font-size:15px;}
-  .brand .titles .t2{font-size:9px; color:var(--muted); letter-spacing:.5px;}
-  #menuBtn{background:var(--inputBg); border:1px solid var(--border); border-radius:8px;
-    width:36px; height:36px; font-size:18px; color:var(--accent); display:flex;
-    align-items:center; justify-content:center;}
+  .brand .titles .t1{font-weight:700; font-size:15px; letter-spacing:.2px;}
+  .brand .titles .t2{font-size:9px; color:var(--accent); letter-spacing:1px; font-family:var(--mono);}
+  #menuBtn{background:linear-gradient(160deg, var(--panelHi), transparent), var(--inputBg);
+    border:1px solid var(--border); border-radius:10px; width:36px; height:36px; font-size:18px;
+    color:var(--accent); display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 3px 8px var(--shadow);}
   .stats{display:flex; gap:6px; margin-top:10px;}
-  .stat{flex:1; text-align:center; border-radius:10px; padding:6px 4px; border:1px solid;}
-  .stat .n{font-size:18px; font-weight:800; line-height:1.1;}
+  .stat{flex:1; text-align:center; border-radius:10px; padding:6px 4px; border:1px solid;
+    position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px var(--shadow);}
+  .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
   .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px;}
-  .stat.open{background:var(--openFill); border-color:#f0c791;}
-  .stat.closed{background:var(--closedFill); border-color:#9fdcb9;}
-  .stat.total{background:#E4EDFB; border-color:#b7d0f5;}
-  .stat.open .n{color:var(--open);} .stat.closed .n{color:var(--closed);} .stat.total .n{color:var(--accent);}
+  .stat.open{background:var(--openFill); border-color:rgba(245,169,61,.35);}
+  .stat.closed{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
+  .stat.total{background:rgba(55,214,196,.14); border-color:rgba(55,214,196,.35);}
+  .stat.open .n{color:var(--open); text-shadow:0 0 12px rgba(245,169,61,.5);}
+  .stat.closed .n{color:var(--closed); text-shadow:0 0 12px rgba(51,209,122,.5);}
+  .stat.total .n{color:var(--accent); text-shadow:0 0 12px var(--accentGlow);}
 
   /* ---- controls ---- */
-  .controls{padding:10px 14px 0; flex-shrink:0; background:var(--panel);}
+  .controls{padding:10px 14px 0; flex-shrink:0; background:var(--panel);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); position:relative; z-index:2;}
   .field{width:100%; background:var(--inputBg); border:1px solid var(--border); border-radius:9px;
-    padding:9px 11px; font-size:14px; color:var(--text); margin-bottom:8px;}
-  select.field{-webkit-appearance:none; appearance:none;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239AA3B2'/></svg>");
+    padding:9px 11px; font-size:14px; color:var(--text); margin-bottom:8px;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
+  select.field{-webkit-appearance:none; appearance:none; color-scheme:dark;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239FB0C8'/></svg>");
     background-repeat:no-repeat; background-position:right 12px center;}
   .chips{display:flex; gap:6px; margin-bottom:10px;}
   .chip{flex:1; text-align:center; padding:7px 0; border-radius:20px; font-size:12px; font-weight:700;
     background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
-  .chip.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .chip.active{background:linear-gradient(180deg, #4EE8D6, var(--accent)); color:#06211D; border-color:var(--accent);
+    box-shadow:0 0 0 1px var(--accentGlow), 0 4px 14px var(--accentGlow), inset 0 1px 0 rgba(255,255,255,.4);}
   .tabs{display:flex; border-bottom:1px solid var(--border);}
   .tab{flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:700; color:var(--muted);
     border-bottom:2px solid transparent;}
-  .tab.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .tab.active{color:var(--accent); border-bottom-color:var(--accent); text-shadow:0 0 10px var(--accentGlow);}
 
   /* ---- list view ---- */
   #listView{flex:1; overflow-y:auto; padding:10px 14px 90px; -webkit-overflow-scrolling:touch;}
-  .card{background:var(--inputBg); border:1px solid var(--border); border-radius:12px; padding:12px;
-    margin-bottom:10px;}
-  .card.open{border-left:4px solid var(--open);}
-  .card.closed{border-left:4px solid var(--closed);}
+  .card{background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.open{border-left:3px solid var(--open); box-shadow:inset 3px 0 12px -4px rgba(245,169,61,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.closed{border-left:3px solid var(--closed); box-shadow:inset 3px 0 12px -4px rgba(51,209,122,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
   .card .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
-  .card .id{font-family:ui-monospace,Consolas,monospace; font-size:11px; font-weight:700; color:var(--subtext);}
+  .card .id{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.4px;}
   .badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 8px; border-radius:20px;}
-  .badge.open{background:var(--openFill); color:var(--open);}
-  .badge.closed{background:var(--closedFill); color:var(--closed);}
+  .badge.open{background:var(--openFill); color:var(--open); box-shadow:0 0 10px rgba(245,169,61,.25), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.closed{background:var(--closedFill); color:var(--closed); box-shadow:0 0 10px rgba(51,209,122,.25), inset 0 1px 0 rgba(255,255,255,.12);}
   .card .site{font-weight:700; font-size:13px; margin-bottom:3px;}
   .card .desc{font-size:13px; color:var(--subtext); line-height:1.4; margin-bottom:8px;}
   .card .meta{font-size:10px; color:var(--muted); margin-bottom:8px;}
@@ -76,31 +99,47 @@
   .tl-item{font-size:11px; color:var(--subtext); line-height:1.5; padding:4px 0; display:flex;
     align-items:flex-start; gap:6px;}
   .tl-item .tl-text{flex:1; min-width:0;}
-  .tl-date{font-weight:700; color:var(--text);}
+  .tl-date{font-weight:700; color:var(--text); font-family:var(--mono);}
   .tl-actions{display:flex; gap:3px; flex-shrink:0;}
   .tl-actions button{width:22px; height:22px; border-radius:6px; border:1px solid var(--border);
     background:var(--inputBg); font-size:11px; line-height:1; padding:0; color:var(--muted);}
   .tl-actions .tl-del{color:var(--danger);}
+  .user-row{display:flex; align-items:center; justify-content:space-between; padding:7px 10px;
+    background:var(--inputBg); border:1px solid var(--border); border-radius:8px; margin-bottom:6px;
+    font-size:12px; font-weight:600; box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+  .user-row button{width:24px; height:24px; border-radius:6px; border:1px solid var(--border);
+    background:var(--panelSolid); color:var(--danger); font-size:11px; padding:0;}
   .card .actions{display:flex; gap:6px;}
   .card .actions button{flex:1; padding:8px 4px; border-radius:8px; border:1px solid var(--border);
-    background:#fff; font-size:10px; font-weight:700;}
-  .btn-edit{color:var(--text);} .btn-progress{color:#6E5BC4;} .btn-toggle{color:var(--accent);} .btn-del{color:var(--danger);}
+    background:linear-gradient(180deg, var(--panelHi), transparent), var(--panelSolid);
+    font-size:10px; font-weight:700; box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 2px 6px var(--shadow);}
+  .btn-edit{color:var(--text);} .btn-progress{color:#B9A6FF;} .btn-toggle{color:var(--accent);} .btn-del{color:var(--danger);}
   .empty-note{text-align:center; color:var(--muted); font-size:13px; padding:50px 20px;}
 
   /* ---- map view ---- */
   #mapView{flex:1; position:relative; overflow:hidden; display:none; touch-action:none;}
-  #mapSvg{width:100%; height:100%; display:block; background:var(--bg);}
-  .map-legend{position:absolute; top:10px; left:10px; background:rgba(255,255,255,.92);
+  #mapSvg{width:100%; height:100%; display:block; background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(55,214,196,.05) 0, rgba(55,214,196,.05) 1px, transparent 1px, transparent 86px),
+    radial-gradient(circle at 50% 42%, rgba(55,214,196,.07), transparent 55%),
+    radial-gradient(circle at 20% 85%, rgba(167,139,250,.06), transparent 45%),
+    var(--bg);}
+  .map-legend{position:absolute; top:10px; left:10px; background:var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:10px;
-    color:var(--subtext); display:flex; gap:10px; align-items:center; backdrop-filter:blur(4px);}
+    color:var(--subtext); display:flex; gap:10px; align-items:center;
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 6px 16px var(--shadow);}
   .legend-dot{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:3px; vertical-align:-1px;}
   .zoom-controls{position:absolute; right:10px; bottom:14px; display:flex; flex-direction:column; gap:6px;}
-  .zoom-controls button{width:42px; height:42px; border-radius:12px; background:#fff;
+  .zoom-controls button{width:42px; height:42px; border-radius:12px;
+    background:linear-gradient(165deg, var(--panelHi), transparent 60%), var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border); font-size:18px; font-weight:700; color:var(--accent);
-    box-shadow:0 2px 6px rgba(0,0,0,.08);}
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 6px 16px var(--shadow);}
   .zoom-controls button#fitBtn{font-size:10px; font-weight:800;}
-  .detail-bar{position:absolute; left:10px; right:10px; bottom:14px; background:#fff;
-    border:1px solid var(--border); border-radius:12px; padding:10px 12px; box-shadow:0 4px 14px rgba(0,0,0,.1);
+  .detail-bar{position:absolute; left:10px; right:10px; bottom:14px; background:var(--panel);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 10px 28px var(--shadow);
     display:none;}
   .detail-bar.show{display:block;}
   .detail-bar .txt{font-size:12px; margin-bottom:8px; line-height:1.4;}
@@ -110,29 +149,35 @@
 
   /* ---- FAB ---- */
   #fab{position:fixed; right:18px; bottom:18px; width:56px; height:56px; border-radius:50%;
-    background:var(--accent); color:#fff; font-size:26px; border:none; box-shadow:0 4px 14px rgba(78,143,224,.5);
+    background:linear-gradient(165deg, #4EE8D6, var(--accentDark)); color:#06211D; font-size:26px; border:none;
+    box-shadow:0 2px 0 rgba(255,255,255,.4) inset, 0 -3px 10px rgba(0,0,0,.25) inset, 0 8px 24px var(--accentGlow);
     z-index:50; display:flex; align-items:center; justify-content:center;}
 
   /* ---- modal ---- */
-  .overlay{position:fixed; inset:0; background:rgba(20,25,35,.45); display:none; align-items:flex-end;
-    z-index:100;}
+  .overlay{position:fixed; inset:0; background:rgba(2,6,14,.6); backdrop-filter:blur(2px); display:none;
+    align-items:flex-end; z-index:100;}
   .overlay.show{display:flex;}
-  .sheet{background:#fff; width:100%; border-radius:18px 18px 0 0; padding:18px 18px max(18px, env(safe-area-inset-bottom));
-    max-height:80vh; overflow-y:auto;}
+  .sheet{background:linear-gradient(165deg, var(--panelHi), transparent 30%), var(--panelSolid);
+    width:100%; border-radius:18px 18px 0 0; padding:18px 18px max(18px, env(safe-area-inset-bottom));
+    max-height:80vh; overflow-y:auto; border-top:1px solid var(--borderHi);
+    box-shadow:0 -16px 48px rgba(0,0,0,.5);}
   .sheet h3{margin:0 0 14px; font-size:15px;}
   .sheet label{font-size:10px; color:var(--muted); letter-spacing:1px; display:block; margin:10px 0 4px;}
   .sheet input, .sheet textarea{width:100%; background:var(--inputBg); border:1px solid var(--border);
-    border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;}
+    border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
   .sheet textarea{resize:vertical; min-height:70px;}
   .sheet .btnrow{display:flex; gap:8px; margin-top:16px;}
   .sheet .btnrow button{flex:1; padding:12px 0; border-radius:10px; border:none; font-size:13px; font-weight:700;}
   .btn-cancel{background:var(--inputBg); color:var(--muted);}
-  .btn-save{background:var(--accent); color:#fff;}
+  .btn-save{background:linear-gradient(180deg, #4EE8D6, var(--accent)); color:#06211D;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 6px 18px var(--accentGlow);}
 
   /* ---- export menu ---- */
-  .menu{position:fixed; top:56px; right:14px; background:#fff; border:1px solid var(--border);
-    border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.15); display:none; z-index:90; overflow:hidden;
-    padding-top:max(0px, env(safe-area-inset-top));}
+  .menu{position:fixed; top:56px; right:14px; background:linear-gradient(165deg, var(--panelHi), transparent 50%), var(--panelSolid);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--border); border-radius:12px; box-shadow:inset 0 1px 0 var(--borderHi), 0 16px 40px rgba(0,0,0,.5);
+    display:none; z-index:90; overflow:hidden; padding-top:max(0px, env(safe-area-inset-top));}
   .menu.show{display:block;}
   .menu button{display:block; width:100%; text-align:left; padding:12px 16px; background:none; border:none;
     font-size:13px; color:var(--text); border-bottom:1px solid var(--border); white-space:nowrap;}
@@ -140,8 +185,9 @@
 
   /* ---- toast ---- */
   #toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px); opacity:0;
-    background:var(--accent); color:#fff; padding:10px 18px; border-radius:20px; font-size:12px;
-    font-weight:700; z-index:200; transition:all .25s; pointer-events:none;}
+    background:linear-gradient(180deg, #4EE8D6, var(--accent)); color:#06211D; padding:10px 18px; border-radius:20px;
+    font-size:12px; font-weight:700; z-index:200; transition:all .25s; pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 10px 30px var(--accentGlow);}
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -187,7 +233,24 @@
 <div id="listView"></div>
 
 <div id="mapView">
-  <svg id="mapSvg"><g id="viewport"><g id="nodes"></g></g></svg>
+  <svg id="mapSvg">
+    <defs>
+      <radialGradient id="specular" cx="32%" cy="22%" r="75%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity=".5"/>
+        <stop offset="55%" stop-color="#ffffff" stop-opacity=".06"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="glowSoft" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="3.2" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="glowStrong" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="6" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g id="viewport"><g id="nodes"></g></g>
+  </svg>
   <div class="map-legend">
     <span><span class="legend-dot" style="background:var(--openFill);border:1.5px solid var(--open)"></span>Open</span>
     <span><span class="legend-dot" style="background:var(--closedFill);border:1.5px solid var(--closed)"></span>Closed</span>
@@ -213,15 +276,18 @@
 <button id="fab">+</button>
 
 <div class="menu" id="exportMenu">
+  <button id="mImportExcel">Import from Excel...</button>
   <button id="mCsv">Export CSV</button>
   <button id="mExcel">Export Excel (.xls)</button>
   <button id="mBackup">Backup All Data (JSON)</button>
-  <button id="mRestore">Restore from Backup...</button>
+  <button id="mRestore">Restore from Backup... (Admin)</button>
   <button id="mSvg">Export Map (SVG, vector)</button>
   <button id="mPng">Export Map (PNG image)</button>
   <button id="mReset">Reset Map Layout</button>
+  <button id="mManageUsers">Manage Users (Admin)</button>
 </div>
 <input type="file" id="restoreFileInput" accept="application/json,.json" style="display:none">
+<input type="file" id="importExcelInput" accept=".xlsx,.xls,.csv" style="display:none">
 
 <div class="overlay" id="formOverlay">
   <div class="sheet">
@@ -258,9 +324,26 @@
     </div>
     <label>YOUR NAME</label>
     <input id="userNameInput" placeholder="e.g. John, Site Team A…">
+    <div id="userNameError" style="font-size:11px; color:var(--danger); margin-top:6px; display:none;"></div>
     <div class="btnrow" id="userOverlayButtons">
       <button class="btn-cancel" id="userCancel" style="display:none;">Cancel</button>
       <button class="btn-save" id="userSave">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="manageUsersOverlay">
+  <div class="sheet">
+    <h3>Manage Users (Admin)</h3>
+    <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
+      Only names added here can sign in to this app. ZASSAH (admin) can always sign in.
+    </div>
+    <div id="approvedUsersList" style="margin-bottom:12px;"></div>
+    <label>ADD NEW USER</label>
+    <input id="newUserNameInput" placeholder="e.g. John">
+    <div class="btnrow">
+      <button class="btn-cancel" id="manageUsersClose">Close</button>
+      <button class="btn-save" id="addUserBtn">Add User</button>
     </div>
   </div>
 </div>
@@ -273,8 +356,8 @@
 "use strict";
 
 // ───────────────────────── constants ─────────────────────────
-var SITE_COLORS = ["#3DBEB0","#F2965C","#5C9DE8","#B07CD6","#E3B23C","#E8748A","#6FBF73","#5CC2E0"];
-var STATUS = { Open:{color:"#E0891E",fill:"#FBEBD8"}, Closed:{color:"#1FA85C",fill:"#DCF3E6"} };
+var SITE_COLORS = ["#2DD4BF","#A78BFA","#FBBF24","#F472B6","#4ADE80","#38BDF8","#FB923C","#22D3EE"];
+var STATUS = { Open:{color:"#F5A93D",fill:"rgba(245,169,61,.22)"}, Closed:{color:"#33D17A",fill:"rgba(51,209,122,.22)"} };
 var SITE_R = 34, ISSUE_W = 148, ISSUE_H = 42, MARGIN = 34, CARD_W = 176, CARD_H = 88;
 var STORAGE_KEY = "sitetrack_issues_v1";
 var POS_KEY = "sitetrack_positions_v1";
@@ -716,7 +799,7 @@ function renderMap(){
 
   if(list.length===0){
     drawCenter(nodesG, total);
-    var t = svgEl("text",{x:0,y:120,"text-anchor":"middle",fill:"#9AA3B2","font-size":13});
+    var t = svgEl("text",{x:0,y:120,"text-anchor":"middle",fill:"#7E91AC","font-size":13});
     t.textContent = "No issues match — try clearing filters";
     nodesG.appendChild(t);
     lastSiteNodes=[]; lastIssueNodes=[];
@@ -729,9 +812,10 @@ function renderMap(){
   var colorMap = {};
   siteNames.forEach(function(s,i){ colorMap[s]=SITE_COLORS[i%SITE_COLORS.length]; });
 
-  // center -> site curves
+  // center -> site curves (glowing signal lines)
   layout.siteNodes.forEach(function(sn){
-    var p = svgEl("path",{ d:sCurvePath(0,0,sn.x,sn.y), fill:"none", stroke:colorMap[sn.site], "stroke-width":3, "stroke-linecap":"round" });
+    var p = svgEl("path",{ d:sCurvePath(0,0,sn.x,sn.y), fill:"none", stroke:colorMap[sn.site],
+      "stroke-width":2.6, "stroke-linecap":"round", opacity:.85, filter:"url(#glowSoft)" });
     nodesG.appendChild(p);
   });
   // site -> issue curves + date label
@@ -740,11 +824,12 @@ function renderMap(){
     var col = colorMap[iss.site];
     var selected = selectedId===iss.id;
     var p = svgEl("path",{ d:sCurvePath(n.sx,n.sy,n.x,n.y), fill:"none", stroke:col,
-      "stroke-width": selected?2.6:1.9, "stroke-linecap":"round" });
+      "stroke-width": selected?2.4:1.6, "stroke-linecap":"round", opacity:.8,
+      filter: selected ? "url(#glowSoft)" : undefined });
     nodesG.appendChild(p);
     var dir = n.x>=n.sx ? 1 : -1;
-    var dt = svgEl("text",{x:n.sx+dir*(SITE_R+10), y:n.sy-9, "text-anchor":(dir>0?"start":"end"), fill:"#9AA3B2",
-      "font-size":9, "font-style":"italic"});
+    var dt = svgEl("text",{x:n.sx+dir*(SITE_R+10), y:n.sy-9, "text-anchor":(dir>0?"start":"end"), fill:"#7E91AC",
+      "font-size":9, "font-style":"italic", "font-family":"var(--mono)"});
     dt.textContent = fmtDate(iss.ts);
     nodesG.appendChild(dt);
 
@@ -758,12 +843,12 @@ function renderMap(){
       progList.forEach(function(p, k){
         var dist = issueFootprint + 26 + k*34;
         var px = n.x + dist*Math.cos(baseAngle), py = n.y + dist*Math.sin(baseAngle);
-        var pp = svgEl("path",{ d:sCurvePath(prevX,prevY,px,py), fill:"none", stroke:"#8B7FD1",
-          "stroke-width":1.6, "stroke-linecap":"round", "stroke-dasharray":"1 3" });
+        var pp = svgEl("path",{ d:sCurvePath(prevX,prevY,px,py), fill:"none", stroke:"#B9A6FF",
+          "stroke-width":1.5, "stroke-linecap":"round", "stroke-dasharray":"1 3.4", opacity:.75 });
         nodesG.appendChild(pp);
-        nodesG.appendChild(svgEl("circle",{cx:px,cy:py,r:4.5,fill:"#8B7FD1"}));
+        nodesG.appendChild(svgEl("circle",{cx:px,cy:py,r:4.2,fill:"#B9A6FF",filter:"url(#glowSoft)"}));
         var words = p.note.split(" ").slice(0,3).join(" ") + (p.note.split(" ").length>3?"…":"");
-        var pt = svgEl("text",{x:px, y:py-9, "text-anchor":"middle", fill:"#6E5BC4",
+        var pt = svgEl("text",{x:px, y:py-9, "text-anchor":"middle", fill:"#C7B8FF",
           "font-size":7.5, "font-style":"italic"});
         pt.textContent = fmtDate(p.ts)+": "+words;
         nodesG.appendChild(pt);
@@ -774,38 +859,42 @@ function renderMap(){
 
   drawCenter(nodesG, total);
 
-  // site nodes
+  // site nodes — glass-glossy spheres: soft colored glow halo, convex dark
+  // fill, specular highlight catching the "light" top-left
   layout.siteNodes.forEach(function(sn){
     var col = colorMap[sn.site];
     var g = svgEl("g",{ class:"node-site", "data-key":"site:"+sn.site });
-    g.appendChild(svgEl("circle",{cx:sn.x+2,cy:sn.y+3,r:SITE_R,fill:"#D7DBE4",opacity:.6}));
-    g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R,fill:"#fff",stroke:col,"stroke-width":2.6}));
-    var t = svgEl("text",{x:sn.x,y:sn.y+4,"text-anchor":"middle",fill:"#2E3542","font-size":10,"font-weight":700});
+    g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R+3,fill:col,opacity:.18,filter:"url(#glowStrong)"}));
+    g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R,fill:"#0F1829",stroke:col,"stroke-width":2.2,opacity:.96}));
+    g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R-1.5,fill:"url(#specular)"}));
+    var t = svgEl("text",{x:sn.x,y:sn.y+4,"text-anchor":"middle",fill:"#F2F6FC","font-size":10,"font-weight":700});
     t.textContent = sn.site;
     g.appendChild(t);
     nodesG.appendChild(g);
     attachDrag(g, "site", sn.site);
   });
 
-  // issue nodes
+  // issue nodes — glass pills, lit by their status color, with the same
+  // specular catch-light as the site spheres for a consistent glossy set
   layout.issueNodes.forEach(function(n){
     var iss = n.issue;
     var sc = STATUS[iss.status];
     var selected = selectedId===iss.id;
     var hw = ISSUE_W/2, hh = ISSUE_H/2;
     var g = svgEl("g",{ class:"node-issue", "data-key":"issue:"+iss.id });
-    g.appendChild(svgEl("rect",{x:n.x-hw+2,y:n.y-hh+3,width:ISSUE_W,height:ISSUE_H,rx:10,fill:"#D7DBE4",opacity:.6}));
-    var rect = svgEl("rect",{x:n.x-hw,y:n.y-hh,width:ISSUE_W,height:ISSUE_H,rx:10,fill:sc.fill,stroke:sc.color,
-      "stroke-width": selected?2.4:1.6});
-    g.appendChild(rect);
     if(selected){
-      g.appendChild(svgEl("rect",{x:n.x-hw-3,y:n.y-hh-3,width:ISSUE_W+6,height:ISSUE_H+6,rx:12,fill:"none",
-        stroke:sc.color,"stroke-width":1.2}));
+      g.appendChild(svgEl("rect",{x:n.x-hw-4,y:n.y-hh-4,width:ISSUE_W+8,height:ISSUE_H+8,rx:13,
+        fill:sc.color,opacity:.22,filter:"url(#glowStrong)"}));
     }
+    var rect = svgEl("rect",{x:n.x-hw,y:n.y-hh,width:ISSUE_W,height:ISSUE_H,rx:10,fill:"#101B30",
+      stroke:sc.color,"stroke-width": selected?2.2:1.5, opacity:.97});
+    g.appendChild(rect);
+    g.appendChild(svgEl("rect",{x:n.x-hw,y:n.y-hh,width:ISSUE_W,height:ISSUE_H,rx:10,fill:sc.fill}));
+    g.appendChild(svgEl("rect",{x:n.x-hw,y:n.y-hh,width:ISSUE_W,height:ISSUE_H,rx:10,fill:"url(#specular)"}));
     var lines = wrapToWidth(iss.issue, ISSUE_W-16, 9, 2);
     var startY = n.y - (lines.length-1)*6.5;
     lines.forEach(function(line, idx){
-      var t = svgEl("text",{x:n.x,y:startY+idx*13,"text-anchor":"middle",fill:"#2E3542","font-size":9});
+      var t = svgEl("text",{x:n.x,y:startY+idx*13,"text-anchor":"middle",fill:"#F2F6FC","font-size":9});
       t.textContent = line;
       g.appendChild(t);
     });
@@ -815,13 +904,16 @@ function renderMap(){
 }
 function drawCenter(nodesG, count){
   var hw=CARD_W/2, hh=CARD_H/2;
-  nodesG.appendChild(svgEl("rect",{x:-hw+3,y:-hh+4,width:CARD_W,height:CARD_H,rx:16,fill:"#D7DBE4",opacity:.6}));
-  nodesG.appendChild(svgEl("rect",{x:-hw,y:-hh,width:CARD_W,height:CARD_H,rx:16,fill:"#fff",stroke:"#E3E6EE"}));
+  nodesG.appendChild(svgEl("rect",{x:-hw-5,y:-hh-5,width:CARD_W+10,height:CARD_H+10,rx:19,
+    fill:"#37D6C4",opacity:.2,filter:"url(#glowStrong)"}));
+  nodesG.appendChild(svgEl("rect",{x:-hw,y:-hh,width:CARD_W,height:CARD_H,rx:16,fill:"#0F1829",
+    stroke:"#37D6C4","stroke-width":1.4,opacity:.97}));
+  nodesG.appendChild(svgEl("rect",{x:-hw,y:-hh,width:CARD_W,height:CARD_H,rx:16,fill:"url(#specular)"}));
   var icon = svgEl("text",{x:0,y:-16,"text-anchor":"middle","font-size":20});
   icon.textContent = "📡"; nodesG.appendChild(icon);
-  var t1 = svgEl("text",{x:0,y:6,"text-anchor":"middle",fill:"#2E3542","font-size":12,"font-weight":700});
+  var t1 = svgEl("text",{x:0,y:6,"text-anchor":"middle",fill:"#F2F6FC","font-size":12,"font-weight":700});
   t1.textContent = "Site Acceptance Alarm Map"; nodesG.appendChild(t1);
-  var t2 = svgEl("text",{x:0,y:26,"text-anchor":"middle",fill:"#78818F","font-size":9});
+  var t2 = svgEl("text",{x:0,y:26,"text-anchor":"middle",fill:"#9FB0C8","font-size":9,"font-family":"var(--mono)"});
   t2.textContent = count+" tracked issue"+(count!==1?"s":""); nodesG.appendChild(t2);
 }
 
@@ -1143,7 +1235,12 @@ document.getElementById("mBackup").addEventListener("click", function(){
   download("site_acceptance_alarmtracking_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
+var ADMIN_NAME = "ZASSAH";
+function isAdmin(){
+  return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
+}
 document.getElementById("mRestore").addEventListener("click", function(){
+  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can restore from backup"); return; }
   document.getElementById("restoreFileInput").click();
 });
 document.getElementById("restoreFileInput").addEventListener("change", function(e){
@@ -1179,6 +1276,102 @@ document.getElementById("restoreFileInput").addEventListener("change", function(
   };
   reader.readAsText(file);
 });
+document.getElementById("mImportExcel").addEventListener("click", function(){
+  document.getElementById("importExcelInput").click();
+});
+document.getElementById("importExcelInput").addEventListener("change", function(e){
+  var file = e.target.files[0];
+  e.target.value = "";
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(evt){
+    var rows;
+    try{
+      var data = new Uint8Array(evt.target.result);
+      var wb = XLSX.read(data, {type:"array"});
+      var firstSheet = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(firstSheet, {header:1, defval:""});
+    }catch(err){
+      console.error(err);
+      showToast("Could not read that file — make sure it's a valid Excel file");
+      return;
+    }
+    if(!rows || rows.length<2){ showToast("No data rows found in the file"); return; }
+
+    var headers = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+    function findCol(keywords){
+      for(var i=0;i<headers.length;i++){
+        for(var k=0;k<keywords.length;k++){
+          if(headers[i].indexOf(keywords[k]) !== -1) return i;
+        }
+      }
+      return -1;
+    }
+    var siteCol = findCol(["site"]);
+    var issueCol = findCol(["issue", "description"]);
+    var userCol = findCol(["username", "user", "owner"]);
+
+    if(siteCol===-1 || issueCol===-1 || userCol===-1){
+      showToast("File must have columns: Site ID, Issue Description, Username");
+      return;
+    }
+
+    var parsed = [];
+    for(var r=1; r<rows.length; r++){
+      var row = rows[r];
+      var site = String(row[siteCol]||"").trim();
+      var issueText = String(row[issueCol]||"").trim();
+      var owner = String(row[userCol]||"").trim();
+      if(!site && !issueText) continue; // skip fully blank rows
+      if(!site || !issueText){
+        showToast("Row "+(r+1)+" is missing Site ID or Issue Description — import stopped");
+        return;
+      }
+      parsed.push({ site: site.toUpperCase(), issue: issueText, owner: owner || (currentUser||"Unknown") });
+    }
+    if(parsed.length===0){ showToast("No valid rows found to import"); return; }
+
+    var ok = confirm(
+      "Import "+parsed.length+" new issue"+(parsed.length!==1?"s":"")+" from this Excel file?\n\n"+
+      "Each becomes a new Open issue, attributed to the Username column (or you, where left blank)."
+    );
+    if(!ok) return;
+    bulkAddIssues(parsed);
+  };
+  reader.readAsArrayBuffer(file);
+});
+function bulkAddIssues(parsed){
+  var now = Date.now();
+  var localCounter = null;
+  if(!FIREBASE_ENABLED){
+    var max = 0;
+    issues.forEach(function(i){
+      var n = parseInt(i.id.split("-").pop(), 10);
+      if(!isNaN(n)) max = Math.max(max, n);
+    });
+    localCounter = max;
+  }
+  var newIssues = parsed.map(function(p, idx){
+    var id = FIREBASE_ENABLED ? nextId() : "ISS-" + String(++localCounter).padStart(4,"0");
+    return { id: id, site: p.site, issue: p.issue, status: "Open",
+      ts: now+idx, updated: now+idx, progress: [], owner: p.owner };
+  });
+  if(FIREBASE_ENABLED){
+    var batch = db.batch();
+    newIssues.forEach(function(iss){
+      var ref = db.collection(COLLECTION).doc(iss.id);
+      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner });
+    });
+    batch.commit()
+      .then(function(){ showToast("Imported "+newIssues.length+" issues"); })
+      .catch(function(err){ console.error(err); showToast("Import failed — check connection"); });
+  }else{
+    newIssues.forEach(function(iss){ issues.unshift(iss); });
+    saveIssues();
+    refreshAll(true);
+    showToast("Imported "+newIssues.length+" issues");
+  }
+}
 function restoreIssues(list){
   if(FIREBASE_ENABLED){
     var batch = db.batch();
@@ -1269,7 +1462,7 @@ document.getElementById("mSvg").addEventListener("click", function(){
   clone.setAttribute("xmlns", SVGNS);
   clone.setAttribute("width", svg.clientWidth);
   clone.setAttribute("height", svg.clientHeight);
-  var bgRect = svgEl("rect",{x:-5000,y:-5000,width:10000,height:10000,fill:"#EEF0F5"});
+  var bgRect = svgEl("rect",{x:-5000,y:-5000,width:10000,height:10000,fill:"#060B16"});
   clone.querySelector("#viewport").insertBefore(bgRect, clone.querySelector("#viewport").firstChild);
   var xml = new XMLSerializer().serializeToString(clone);
   download("mindmap.svg", new Blob([xml], {type:"image/svg+xml"}));
@@ -1282,7 +1475,7 @@ document.getElementById("mPng").addEventListener("click", function(){
     var clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", SVGNS);
     clone.setAttribute("width", w); clone.setAttribute("height", h);
-    var bgRect = svgEl("rect",{x:-5000,y:-5000,width:10000,height:10000,fill:"#EEF0F5"});
+    var bgRect = svgEl("rect",{x:-5000,y:-5000,width:10000,height:10000,fill:"#060B16"});
     clone.querySelector("#viewport").insertBefore(bgRect, clone.querySelector("#viewport").firstChild);
     var xml = new XMLSerializer().serializeToString(clone);
     var img = new Image();
@@ -1347,6 +1540,8 @@ function refreshAll(refit){
 }
 
 // ───────────────────────── username ─────────────────────────
+var USERS_COLLECTION = "approved_users"; // doc id = name.trim().toUpperCase()
+
 function loadUsername(){
   try{ currentUser = localStorage.getItem(USER_KEY); }catch(e){ currentUser = null; }
 }
@@ -1355,11 +1550,31 @@ function saveUsername(name){
   try{ localStorage.setItem(USER_KEY, name); }catch(e){}
   document.getElementById("userChip").textContent = "👤 "+name;
 }
+function clearUsername(){
+  currentUser = null;
+  try{ localStorage.removeItem(USER_KEY); }catch(e){}
+}
+
+// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
+// allowed. Everyone else must already be in the admin-managed approved
+// list — but only when Firebase sync is on, since that list only makes
+// sense as something shared across everyone. In local-only mode (no
+// shared backend) any name is accepted, same as before this feature.
+function checkUserApproved(name, callback){
+  var normalized = name.trim().toUpperCase();
+  if(normalized === ADMIN_NAME){ callback(true); return; }
+  if(!FIREBASE_ENABLED){ callback(true); return; }
+  db.collection(USERS_COLLECTION).doc(normalized).get()
+    .then(function(doc){ callback(doc.exists); })
+    .catch(function(err){ console.error(err); callback(false, "Could not verify — check connection"); });
+}
+
 function openUserGate(mandatory){
   var overlay = document.getElementById("userOverlay");
   var cancelBtn = document.getElementById("userCancel");
   document.getElementById("userOverlayTitle").textContent = mandatory ? "Who's this?" : "Change your name";
   document.getElementById("userNameInput").value = currentUser || "";
+  document.getElementById("userNameError").style.display = "none";
   cancelBtn.style.display = mandatory ? "none" : "block";
   overlay.classList.add("show");
   // Mandatory first-run gate can't be dismissed by tapping outside it.
@@ -1375,13 +1590,86 @@ document.getElementById("userOverlay").addEventListener("click", function(e){
 });
 document.getElementById("userSave").addEventListener("click", function(){
   var name = document.getElementById("userNameInput").value.trim();
+  var errEl = document.getElementById("userNameError");
+  errEl.style.display = "none";
   if(!name){ showToast("Enter your name to continue"); return; }
-  saveUsername(name);
-  document.getElementById("userOverlay").classList.remove("show");
-  showToast("Signed in as "+name);
+  var saveBtn = document.getElementById("userSave");
+  saveBtn.textContent = "Checking...";
+  saveBtn.disabled = true;
+  checkUserApproved(name, function(allowed, errMsg){
+    saveBtn.textContent = "Continue";
+    saveBtn.disabled = false;
+    if(!allowed){
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
+      errEl.style.display = "block";
+      return;
+    }
+    saveUsername(name);
+    document.getElementById("userOverlay").classList.remove("show");
+    showToast("Signed in as "+name);
+  });
 });
 document.getElementById("userNameInput").addEventListener("keydown", function(e){
   if(e.key==="Enter") document.getElementById("userSave").click();
+});
+
+// ───────────────────────── admin: manage users ─────────────────────────
+var manageUsersOverlay = document.getElementById("manageUsersOverlay");
+function renderApprovedUsersList(){
+  var listEl = document.getElementById("approvedUsersList");
+  if(!FIREBASE_ENABLED){
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);">User approval only applies when shared sync is on.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);">Loading…</div>';
+  db.collection(USERS_COLLECTION).get().then(function(snapshot){
+    if(snapshot.empty){
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);">No approved users yet — add the first one below.</div>';
+      return;
+    }
+    var rows = [];
+    snapshot.forEach(function(doc){
+      var d = doc.data();
+      rows.push('<div class="user-row"><span>'+esc(d.displayName||doc.id)+'</span>'+
+        '<button data-id="'+doc.id+'" class="remove-user-btn" title="Remove">✕</button></div>');
+    });
+    listEl.innerHTML = rows.join("");
+    Array.prototype.forEach.call(listEl.querySelectorAll(".remove-user-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-id");
+        if(!confirm("Remove this user? They won't be able to sign in anymore (existing issues they logged stay untouched).")) return;
+        db.collection(USERS_COLLECTION).doc(id).delete()
+          .then(function(){ showToast("User removed"); renderApprovedUsersList(); })
+          .catch(function(err){ console.error(err); showToast("Could not remove — check connection"); });
+      });
+    });
+  }).catch(function(err){
+    console.error(err);
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--danger);">Could not load users — check connection.</div>';
+  });
+}
+document.getElementById("mManageUsers").addEventListener("click", function(){
+  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can manage users"); return; }
+  document.getElementById("newUserNameInput").value = "";
+  renderApprovedUsersList();
+  manageUsersOverlay.classList.add("show");
+});
+document.getElementById("manageUsersClose").addEventListener("click", function(){
+  manageUsersOverlay.classList.remove("show");
+});
+manageUsersOverlay.addEventListener("click", function(e){ if(e.target===this) this.classList.remove("show"); });
+document.getElementById("addUserBtn").addEventListener("click", function(){
+  if(!FIREBASE_ENABLED){ showToast("User approval only applies when shared sync is on"); return; }
+  var name = document.getElementById("newUserNameInput").value.trim();
+  if(!name){ showToast("Enter a name first"); return; }
+  var normalized = name.toUpperCase();
+  db.collection(USERS_COLLECTION).doc(normalized).set({
+    displayName: name, addedBy: currentUser||ADMIN_NAME, addedAt: Date.now()
+  }).then(function(){
+    document.getElementById("newUserNameInput").value = "";
+    showToast(name+" added");
+    renderApprovedUsersList();
+  }).catch(function(err){ console.error(err); showToast("Could not add — check connection"); });
 });
 
 // ───────────────────────── init ─────────────────────────
@@ -1392,6 +1680,16 @@ document.getElementById("syncBadge").textContent = FIREBASE_ENABLED
   ? "🟢 LIVE — SHARED WITH EVERYONE" : "ALARM TRACKING (LOCAL ONLY)";
 if(currentUser){
   document.getElementById("userChip").textContent = "👤 "+currentUser;
+  // Re-validate in the background in case an admin removed this user since
+  // their last visit — doesn't block the UI while this resolves.
+  checkUserApproved(currentUser, function(allowed){
+    if(!allowed){
+      clearUsername();
+      document.getElementById("userChip").textContent = "👤 Set name";
+      showToast("Your access was removed — please sign in again");
+      openUserGate(true);
+    }
+  });
 }else{
   document.getElementById("userChip").textContent = "👤 Set name";
   openUserGate(true);
