@@ -198,7 +198,7 @@
     <div class="brand">
       <div class="icon">📡</div>
       <div class="titles">
-        <div class="t1">Site Acceptance</div>
+        <div class="t1">OPS Site Acceptance</div>
         <div class="t2" id="syncBadge">ALARM TRACKING</div>
       </div>
     </div>
@@ -336,7 +336,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. ZASSAH (admin) can always sign in.
+      Only names added here can sign in to this app. ZASSSAH (admin) can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -1235,7 +1235,7 @@ document.getElementById("mBackup").addEventListener("click", function(){
   download("site_acceptance_alarmtracking_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
-var ADMIN_NAME = "ZASSAH";
+var ADMIN_NAME = "ZASSSAH";
 function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
@@ -1555,7 +1555,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
+// Checks whether `name` is allowed to sign in. ZASSSAH (admin) is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
