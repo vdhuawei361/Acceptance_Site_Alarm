@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Site Acceptance Alarm Tracking</title>
+<title>OPS Site Acceptance Alarm Tracking</title>
 <!-- Firebase (only used if FIREBASE_ENABLED is set to true near the top of the script below) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -17,6 +17,7 @@
     --accent:#37D6C4; --accentDark:#1FAE9F; --accentGlow:rgba(55,214,196,.35);
     --open:#F5A93D; --openFill:rgba(245,169,61,.16);
     --closed:#33D17A; --closedFill:rgba(51,209,122,.16);
+    --verify:#6EA8FF; --verifyFill:rgba(110,168,255,.18);
     --muted:#6B7E98; --text:#E7EEF9; --subtext:#9FB0C8; --inputBg:rgba(255,255,255,.05);
     --danger:#FB6F8D; --shadow:rgba(0,0,0,.55);
     --mono:"SF Mono",Consolas,"Cascadia Code",monospace;
@@ -54,10 +55,12 @@
   .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
   .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px;}
   .stat.open{background:var(--openFill); border-color:rgba(245,169,61,.35);}
-  .stat.closed{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
+  .stat.verification{background:var(--verifyFill); border-color:rgba(110,168,255,.4);}
+  .stat.resolved{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
   .stat.total{background:rgba(55,214,196,.14); border-color:rgba(55,214,196,.35);}
   .stat.open .n{color:var(--open); text-shadow:0 0 12px rgba(245,169,61,.5);}
-  .stat.closed .n{color:var(--closed); text-shadow:0 0 12px rgba(51,209,122,.5);}
+  .stat.verification .n{color:var(--verify); text-shadow:0 0 12px rgba(110,168,255,.55);}
+  .stat.resolved .n{color:var(--closed); text-shadow:0 0 12px rgba(51,209,122,.5);}
   .stat.total .n{color:var(--accent); text-shadow:0 0 12px var(--accentGlow);}
 
   /* ---- controls ---- */
@@ -86,12 +89,23 @@
     border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;
     box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
   .card.open{border-left:3px solid var(--open); box-shadow:inset 3px 0 12px -4px rgba(245,169,61,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
-  .card.closed{border-left:3px solid var(--closed); box-shadow:inset 3px 0 12px -4px rgba(51,209,122,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.verification{border-left:3px solid var(--verify); box-shadow:inset 3px 0 12px -4px rgba(110,168,255,.45), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.resolved{border-left:3px solid var(--closed); box-shadow:inset 3px 0 12px -4px rgba(51,209,122,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .region-hdr{display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin:14px 2px 8px; padding:7px 12px; border-radius:10px; border:1px solid var(--border);
+    border-left:3px solid var(--rc); background:linear-gradient(90deg, rgba(255,255,255,.05), transparent), var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 4px 12px var(--shadow);}
+  .region-hdr:first-child{margin-top:2px;}
+  .region-name{font-family:var(--mono); font-weight:800; font-size:13px; letter-spacing:1.5px; color:var(--rc);
+    text-shadow:0 0 12px var(--rc);}
+  .region-meta{font-size:10px; color:var(--subtext);}
   .card .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
   .card .id{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.4px;}
   .badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 8px; border-radius:20px;}
   .badge.open{background:var(--openFill); color:var(--open); box-shadow:0 0 10px rgba(245,169,61,.25), inset 0 1px 0 rgba(255,255,255,.12);}
-  .badge.closed{background:var(--closedFill); color:var(--closed); box-shadow:0 0 10px rgba(51,209,122,.25), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.verification{background:var(--verifyFill); color:var(--verify); box-shadow:0 0 10px rgba(110,168,255,.3), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.resolved{background:var(--closedFill); color:var(--closed); box-shadow:0 0 10px rgba(51,209,122,.25), inset 0 1px 0 rgba(255,255,255,.12);}
   .card .site{font-weight:700; font-size:13px; margin-bottom:3px;}
   .card .desc{font-size:13px; color:var(--subtext); line-height:1.4; margin-bottom:8px;}
   .card .meta{font-size:10px; color:var(--muted); margin-bottom:8px;}
@@ -113,13 +127,12 @@
   .card .actions button{flex:1; padding:8px 4px; border-radius:8px; border:1px solid var(--border);
     background:linear-gradient(180deg, var(--panelHi), transparent), var(--panelSolid);
     font-size:10px; font-weight:700; box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 2px 6px var(--shadow);}
-  .btn-edit{color:var(--text);} .btn-progress{color:#B9A6FF;} .btn-toggle{color:var(--accent);} .btn-del{color:var(--danger);}
+  .btn-edit{color:var(--text);} .btn-progress{color:#B9A6FF;} .btn-verify{color:var(--verify);} .btn-pass{color:var(--closed);} .btn-fail{color:var(--open);} .btn-reopen{color:var(--accent);} .btn-del{color:var(--danger);}
   .empty-note{text-align:center; color:var(--muted); font-size:13px; padding:50px 20px;}
 
   /* ---- map view ---- */
   #mapView{flex:1; position:relative; overflow:hidden; display:none; touch-action:none;}
   #mapSvg{width:100%; height:100%; display:block; background:
-    repeating-radial-gradient(circle at 50% 50%, rgba(55,214,196,.05) 0, rgba(55,214,196,.05) 1px, transparent 1px, transparent 86px),
     radial-gradient(circle at 50% 42%, rgba(55,214,196,.07), transparent 55%),
     radial-gradient(circle at 20% 85%, rgba(167,139,250,.06), transparent 45%),
     var(--bg);}
@@ -128,8 +141,11 @@
     border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:10px;
     color:var(--subtext); display:flex; gap:10px; align-items:center;
     box-shadow:inset 0 1px 0 var(--borderHi), 0 6px 16px var(--shadow);}
+  .map-legend{flex-wrap:wrap; row-gap:3px; max-width:calc(100% - 20px);}
+  .map-legend > span{white-space:nowrap;}
+  .map-legend .hint{flex-basis:100%; font-size:9px; color:var(--muted);}
   .legend-dot{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:3px; vertical-align:-1px;}
-  .zoom-controls{position:absolute; right:10px; bottom:14px; display:flex; flex-direction:column; gap:6px;}
+  .zoom-controls{position:absolute; right:10px; bottom:92px; display:flex; flex-direction:column; gap:6px;}
   .zoom-controls button{width:42px; height:42px; border-radius:12px;
     background:linear-gradient(165deg, var(--panelHi), transparent 60%), var(--panel);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
@@ -211,18 +227,23 @@
   </div>
   <div class="stats">
     <div class="stat open"><div class="n" id="statOpen">0</div><div class="l">OPEN</div></div>
-    <div class="stat closed"><div class="n" id="statClosed">0</div><div class="l">CLOSED</div></div>
+    <div class="stat verification"><div class="n" id="statVerify">0</div><div class="l">VERIFY</div></div>
+    <div class="stat resolved"><div class="n" id="statResolved">0</div><div class="l">RESOLVED</div></div>
     <div class="stat total"><div class="n" id="statTotal">0</div><div class="l">TOTAL</div></div>
   </div>
 </header>
 
 <div class="controls">
   <input class="field" id="searchInput" placeholder="Search site, issue, or ID…">
-  <select class="field" id="siteSelect"><option>All Sites</option></select>
+  <div style="display:flex; gap:8px;">
+    <select class="field" id="regionSelect" style="flex:1;"><option>All Regions</option></select>
+    <select class="field" id="siteSelect" style="flex:1.3;"><option>All Sites</option></select>
+  </div>
   <div class="chips">
     <div class="chip active" data-filter="All">All</div>
     <div class="chip" data-filter="Open">Open</div>
-    <div class="chip" data-filter="Closed">Closed</div>
+    <div class="chip" data-filter="Verification">Verify</div>
+    <div class="chip" data-filter="Resolved">Resolved</div>
   </div>
   <div class="tabs">
     <div class="tab active" data-view="list">List</div>
@@ -253,8 +274,9 @@
   </svg>
   <div class="map-legend">
     <span><span class="legend-dot" style="background:var(--openFill);border:1.5px solid var(--open)"></span>Open</span>
-    <span><span class="legend-dot" style="background:var(--closedFill);border:1.5px solid var(--closed)"></span>Closed</span>
-    <span>Drag nodes to move · pinch to zoom</span>
+    <span><span class="legend-dot" style="background:var(--verifyFill);border:1.5px solid var(--verify)"></span>Verify</span>
+    <span><span class="legend-dot" style="background:var(--closedFill);border:1.5px solid var(--closed)"></span>Resolved</span>
+    <span class="hint">Rings = weeks · drag to move · pinch to zoom</span>
   </div>
   <div class="zoom-controls">
     <button id="zoomInBtn">+</button>
@@ -267,7 +289,8 @@
     <div class="actions">
       <button id="detailEdit">EDIT</button>
       <button id="detailProgress">PROGRESS</button>
-      <button id="detailToggle">TOGGLE</button>
+      <button id="detailToggle">VERIFY</button>
+      <button id="detailToggle2" style="display:none">FAIL</button>
       <button id="detailDel">DELETE</button>
     </div>
   </div>
@@ -336,7 +359,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. ZASSSAH (admin) can always sign in.
+      Only names added here can sign in to this app. ZASSAH (admin) can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -357,7 +380,34 @@
 
 // ───────────────────────── constants ─────────────────────────
 var SITE_COLORS = ["#2DD4BF","#A78BFA","#FBBF24","#F472B6","#4ADE80","#38BDF8","#FB923C","#22D3EE"];
-var STATUS = { Open:{color:"#F5A93D",fill:"rgba(245,169,61,.22)"}, Closed:{color:"#33D17A",fill:"rgba(51,209,122,.22)"} };
+// Workflow:  Open -> Verification -> (pass) Resolved | (fail) back to Open.   Resolved can be reopened.
+var STATUS = {
+  Open:         { color:"#F5A93D", fill:"rgba(245,169,61,.22)" },
+  Verification: { color:"#6EA8FF", fill:"rgba(110,168,255,.22)" },
+  Resolved:     { color:"#33D17A", fill:"rgba(51,209,122,.22)" }
+};
+// Issues saved before this step existed use "Closed" — that is the same thing as Resolved.
+function normStatus(st){
+  if(st==="Closed") return "Resolved";
+  return STATUS[st] ? st : "Open";
+}
+
+// ── Regions: a site belongs to a region by the first 3 letters of its Site ID ──
+var REGION_PREFIXES = {
+  BMA: ["BKA","BKB","BKC","BKD","BKF","PTT","NTB","SMP"],
+  EAS: ["CBR","RYG","CCS","CTB","TRT","PCR","NKN","SKO"],
+  NOE: ["NKR","KKN","CYP","UDT","LOI","UBR","BKN","MHR","KLS","NKI","NKP","MDH","SKN","RET","STN","BRR","YST","NBL"]
+};
+var REGION_ORDER = ["BMA","EAS","NOE","Other"];
+var REGION_COLORS = { BMA:"#38BDF8", EAS:"#F472B6", NOE:"#A78BFA", Other:"#7E91AC" };
+var PREFIX_TO_REGION = {};
+Object.keys(REGION_PREFIXES).forEach(function(r){
+  REGION_PREFIXES[r].forEach(function(p){ PREFIX_TO_REGION[p] = r; });
+});
+function getRegion(siteId){
+  var prefix = String(siteId||"").trim().toUpperCase().slice(0,3);
+  return PREFIX_TO_REGION[prefix] || "Other";
+}
 var SITE_R = 34, ISSUE_W = 148, ISSUE_H = 42, MARGIN = 34, CARD_W = 176, CARD_H = 88;
 var STORAGE_KEY = "sitetrack_issues_v1";
 var POS_KEY = "sitetrack_positions_v1";
@@ -394,11 +444,11 @@ if(FIREBASE_ENABLED){
 // ───────────────────────── state ─────────────────────────
 var issues = [];
 var nodePositions = {};   // "site:NAME" or "issue:ID" -> {x,y} — always local to this device
-var filter = "All", siteFilter = "All Sites", search = "";
+var filter = "All", siteFilter = "All Sites", regionFilter = "All Regions", search = "";
 var selectedId = null;
 var view = "list";
 var zoom = 1, panX = 0, panY = 0;
-var minZoom = 0.35, maxZoom = 3;
+var minZoom = 0.05, maxZoom = 3;   // low floor so big, well-spaced maps can still be framed by Fit
 var lastSiteNodes = [], lastIssueNodes = [];
 var editingId = null;
 var currentUser = null;
@@ -419,14 +469,15 @@ function loadAll(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     issues = raw ? JSON.parse(raw) : null;
+    if(issues) issues.forEach(function(i){ i.status = normStatus(i.status); });
   }catch(e){ issues = null; }
   if(!issues){
     var now = Date.now();
     issues = [
       mkIssue("BTS-NORTH-01","Power unit failure - backup generator offline","Open", now-5*3600000),
       mkIssue("BTS-EAST-07","High packet loss on backhaul link","Open", now-2*3600000),
-      mkIssue("BTS-SOUTH-03","Antenna alignment drift detected","Closed", now-8*3600000),
-      mkIssue("BTS-NORTH-01","Cooling fan number 2 degraded","Closed", now-1*3600000),
+      mkIssue("BTS-SOUTH-03","Antenna alignment drift detected","Resolved", now-8*3600000),
+      mkIssue("BTS-NORTH-01","Cooling fan number 2 degraded","Resolved", now-1*3600000),
       mkIssue("BTS-WEST-12","SFP module link down","Open", now-1800000)
     ];
     saveIssues();
@@ -437,7 +488,7 @@ function initFirestoreSync(){
     issues = [];
     snapshot.forEach(function(doc){
       var d = doc.data();
-      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: d.status, ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown" });
+      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown" });
     });
     // Don't auto-refit the map on every remote change — that would yank
     // your zoom/pan out from under you mid-edit. Use the Fit button if needed.
@@ -518,25 +569,58 @@ function updateIssueData(id, site, text){
   saveIssues();
   return true;
 }
-function toggleStatus(id){
-  var iss = issues.find(function(i){ return i.id===id; });
-  if(!iss) return;
-  var newStatus = iss.status==="Open" ? "Closed" : "Open";
+// Moves an issue from one status to another and logs who did it on its timeline.
+// With shared sync this runs as a transaction that first checks the issue is still
+// in the status this person was looking at, so two people can't both act on the
+// same verification at once.
+function changeStatus(id, from, to, note, doneMsg){
   var now = Date.now();
-  var who = currentUser || "Unknown";
-  var statusEntry = { ts: now, note: "Status changed to "+newStatus, by: who };
+  var entry = { ts: now, note: note, by: currentUser || "Unknown" };
   if(FIREBASE_ENABLED){
-    db.collection(COLLECTION).doc(id).update({
-      status: newStatus, updated: now,
-      progress: firebase.firestore.FieldValue.arrayUnion(statusEntry)
-    }).catch(function(err){ console.error(err); showToast("Could not update — check connection"); });
+    var ref = db.collection(COLLECTION).doc(id);
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        if(!doc.exists) throw new Error("gone");
+        if(normStatus(doc.data().status) !== from) throw new Error("stale");
+        tx.update(ref, { status: to, updated: now,
+          progress: firebase.firestore.FieldValue.arrayUnion(entry) });
+      });
+    }).then(function(){ showToast(doneMsg); })
+      .catch(function(err){
+        if(err && err.message==="stale") showToast("Someone else already changed this issue");
+        else if(err && err.message==="gone") showToast("That issue no longer exists");
+        else { console.error(err); showToast("Could not update — check connection"); }
+      });
   }else{
-    iss.status = newStatus;
-    iss.updated = now;
+    var iss = issues.find(function(i){ return i.id===id; });
+    if(!iss) return;
+    iss.status = to; iss.updated = now;
     if(!iss.progress) iss.progress = [];
-    iss.progress.push(statusEntry);
+    iss.progress.push(entry);
     saveIssues();
+    refreshAll(false);
+    showToast(doneMsg);
   }
+}
+var STATUS_FLOW = {
+  verify: { from:"Open",         to:"Verification", note:"Sent for verification",          toast:"Sent for verification" },
+  pass:   { from:"Verification", to:"Resolved",     note:"Verification passed → Resolved", toast:"Verification passed — Resolved" },
+  fail:   { from:"Verification", to:"Open",         note:"Verification failed → back to Open", toast:"Verification failed — back to Open" },
+  reopen: { from:"Resolved",     to:"Open",         note:"Reopened",                       toast:"Reopened" }
+};
+function doStatusAction(act, id){
+  var iss = issues.find(function(i){ return i.id===id; });
+  var step = STATUS_FLOW[act];
+  if(!iss || !step) return;
+  if(iss.status !== step.from){ showToast("Status already changed — refreshed"); refreshAll(false); return; }
+  var note = step.note;
+  if(act==="fail"){
+    var reason = prompt("Verification failed — what still needs fixing? (optional)", "");
+    if(reason===null) return;                       // cancelled: leave it in Verification
+    reason = reason.trim();
+    if(reason) note += ": " + reason;
+  }
+  changeStatus(id, step.from, step.to, note, step.toast);
 }
 function deleteIssue(id){
   if(FIREBASE_ENABLED){
@@ -549,11 +633,15 @@ function deleteIssue(id){
 }
 function getSiteList(){
   var set = {};
-  issues.forEach(function(i){ set[i.site]=true; });
+  issues.forEach(function(i){
+    if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return;
+    set[i.site]=true;
+  });
   return Object.keys(set).sort();
 }
 function getVisible(){
   return issues.filter(function(i){
+    if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return false;
     if(siteFilter!=="All Sites" && i.site!==siteFilter) return false;
     if(filter!=="All" && i.status!==filter) return false;
     if(search){
@@ -582,7 +670,13 @@ function renderList(){
   var visible = getVisible();
   var el = document.getElementById("listView");
   if(visible.length===0){ el.innerHTML = '<div class="empty-note">No issues match — try clearing filters.</div>'; return; }
-  el.innerHTML = visible.map(function(iss){
+  function statusButtonsHtml(iss){
+    if(iss.status==="Open") return '<button class="btn-verify" data-status-act="verify">Verify</button>';
+    if(iss.status==="Verification")
+      return '<button class="btn-pass" data-status-act="pass">✓ Pass</button><button class="btn-fail" data-status-act="fail">✕ Fail</button>';
+    return '<button class="btn-reopen" data-status-act="reopen">Reopen</button>';
+  }
+  function cardHtml(iss){
     var cls = iss.status.toLowerCase();
     var progress = iss.progress || [];
     var timelineHtml = "";
@@ -601,15 +695,33 @@ function renderList(){
       '<div class="actions">'+
         '<button class="btn-edit" data-act="edit">Edit</button>'+
         '<button class="btn-progress" data-act="progress">Progress</button>'+
-        '<button class="btn-toggle" data-act="toggle">'+(iss.status==="Open"?"Close":"Reopen")+'</button>'+
+        statusButtonsHtml(iss)+
         '<button class="btn-del" data-act="del">Delete</button>'+
       '</div></div>';
+  }
+  var groups = {};
+  REGION_ORDER.forEach(function(r){ groups[r] = []; });
+  visible.forEach(function(iss){ groups[getRegion(iss.site)].push(iss); });
+  el.innerHTML = REGION_ORDER.filter(function(r){ return groups[r].length>0; }).map(function(r){
+    var list = groups[r].slice().sort(function(a,b){
+      return a.site<b.site ? -1 : a.site>b.site ? 1 : b.ts-a.ts;
+    });
+    var openCount = list.filter(function(i){ return i.status==="Open"; }).length;
+    var verifyCount = list.filter(function(i){ return i.status==="Verification"; }).length;
+    var siteCount = {}; list.forEach(function(i){ siteCount[i.site]=true; });
+    return '<div class="region-hdr" style="--rc:'+REGION_COLORS[r]+'">'+
+      '<span class="region-name">'+r+'</span>'+
+      '<span class="region-meta">'+Object.keys(siteCount).length+' site'+(Object.keys(siteCount).length!==1?'s':'')+
+      ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' to verify' : '')+'</span></div>'+
+      list.map(cardHtml).join("");
   }).join("");
   Array.prototype.forEach.call(el.querySelectorAll(".card"), function(card){
     var id = card.getAttribute("data-id");
     card.querySelector('[data-act="edit"]').addEventListener("click", function(){ openEdit(id); });
     card.querySelector('[data-act="progress"]').addEventListener("click", function(){ openProgress(id); });
-    card.querySelector('[data-act="toggle"]').addEventListener("click", function(){ toggleStatus(id); refreshAll(); showToast("Status updated"); });
+    Array.prototype.forEach.call(card.querySelectorAll("[data-status-act]"), function(btn){
+      btn.addEventListener("click", function(){ doStatusAction(btn.getAttribute("data-status-act"), id); });
+    });
     card.querySelector('[data-act="del"]').addEventListener("click", function(){ confirmDeleteIssue(id); });
   });
 }
@@ -628,116 +740,282 @@ function confirmDeleteIssue(id){
 }
 
 // ───────────────────────── map layout ─────────────────────────
+// LAYOUT-BEGIN
+var FAN_CHORD = 92;       // typical spacing between neighbouring issue boxes in one site's fan
+var LAYOUT_PAD = 14;      // clear gap the layout keeps between any two things on the map
+
+var WEEK_MS = 7*24*3600*1000;
+// Monday-based week bucket in the viewer's local time (so "week" matches a calendar week).
+function weekIndexOf(ts){
+  var local = ts - new Date(ts).getTimezoneOffset()*60000;
+  return Math.floor((local - 4*86400000)/WEEK_MS);       // 1970-01-05 was a Monday
+}
+function isoWeekNumber(weekIdx){
+  var thursday = weekIdx*WEEK_MS + 4*86400000 + 3*86400000;
+  var year = new Date(thursday).getUTCFullYear();
+  var jan4 = Date.UTC(year,0,4);
+  var wk1Thursday = jan4 + (3 - ((new Date(jan4).getUTCDay()+6)%7))*86400000;
+  return 1 + Math.round((thursday - wk1Thursday)/WEEK_MS);
+}
 function ringRadius(n, nodeR, minR){
   if(n<=1) return minR;
-  var circumference = n*(2*nodeR+MARGIN);
-  return Math.max(minR, circumference/(2*Math.PI));
+  return Math.max(minR, n*(2*nodeR+MARGIN)/(2*Math.PI));
 }
-function computeLayout(list){
-  var sitesMap = {}; var order = [];
+// Progress markers run straight outward from their issue, oldest closest. Each shows
+// its date; only the newest (the tip) also shows its note, set pointing away from the
+// chain, so neighbouring labels can never stack on top of each other.
+var DATE_W = 32, TIP_W = 124;
+// Box (relative to the marker's dot) covering the dot and its label, plus where the label's text goes.
+function markerRect(tip, dx, dy, cs, sn){
+  if(!tip)                                           // date only, just above its dot
+    return { x1:dx-DATE_W/2, x2:dx+DATE_W/2, y1:dy-17, y2:dy+5, lx:dx, ly:dy-8, anchor:"middle" };
+  if(Math.abs(cs) >= 0.5){                           // chain runs sideways: note continues outward along it
+    var sg = cs>0 ? 1 : -1;
+    return { x1: sg>0 ? dx-6 : dx-9-TIP_W, x2: sg>0 ? dx+9+TIP_W : dx+6, y1:dy-8, y2:dy+8,
+             lx:dx+sg*9, ly:dy+3, anchor: sg>0 ? "start" : "end" };
+  }
+  var up = sn<0;                                     // chain runs up/down: note sits beyond the dot
+  return { x1:dx-TIP_W/2, x2:dx+TIP_W/2, y1: up ? dy-19 : dy+5, y2: up ? dy+5 : dy+20,
+           lx:dx, ly: up ? dy-9 : dy+16, anchor:"middle" };
+}
+// Spacing between neighbouring markers: the smallest step (at least 34) at which
+// a marker's label stays clear of the next two, for this particular direction.
+var stepCache = {};
+function chainStep(theta){
+  var key = theta.toFixed(3);
+  if(stepCache[key]) return stepCache[key];
+  var cs = Math.cos(theta), sn = Math.sin(theta), step = 34;
+  var base = markerRect(false, 0, 0, cs, sn);
+  function hits(r){ return base.x1-2 < r.x2 && r.x1 < base.x2+2 && base.y1-2 < r.y2 && r.y1 < base.y2+2; }
+  for(; step<=140; step++){
+    var ok = true;
+    for(var m=1; m<=2 && ok; m++){
+      var dx = step*m*cs, dy = step*m*sn;
+      if(hits(markerRect(false, dx, dy, cs, sn)) || hits(markerRect(true, dx, dy, cs, sn))) ok = false;
+    }
+    if(ok) break;
+  }
+  stepCache[key] = step;
+  return step;
+}
+// Progress markers run straight outward from their issue, oldest closest.
+function chainOffsets(iss, theta){
+  var cnt = Math.min((iss.progress||[]).length, 6), step = chainStep(theta);
+  var fp = Math.hypot(ISSUE_W/2, ISSUE_H/2), cs = Math.cos(theta), sn = Math.sin(theta), out = [];
+  for(var k=0;k<cnt;k++){
+    var d = fp + 26 + k*step, dx = d*cs, dy = d*sn, tip = (k===cnt-1), r = markerRect(tip, dx, dy, cs, sn);
+    out.push({ dx:dx, dy:dy, tip:tip, lx:r.lx, ly:r.ly, anchor:r.anchor,
+               rect:{ x1:r.x1, x2:r.x2, y1:r.y1, y2:r.y2 } });
+  }
+  return out;
+}
+// Bounding box of an issue box plus its progress markers, relative to the issue's centre.
+function relHull(iss, theta){
+  var r = { x1:-ISSUE_W/2, x2:ISSUE_W/2, y1:-ISSUE_H/2, y2:ISSUE_H/2 };
+  chainOffsets(iss, theta).forEach(function(m){
+    r.x1 = Math.min(r.x1, m.rect.x1); r.x2 = Math.max(r.x2, m.rect.x2);
+    r.y1 = Math.min(r.y1, m.rect.y1); r.y2 = Math.max(r.y2, m.rect.y2);
+  });
+  return r;
+}
+function makeBody(x, y, rect, pinned, ref){
+  return { x:x, y:y, ox:(rect.x1+rect.x2)/2, oy:(rect.y1+rect.y2)/2,
+           hw:(rect.x2-rect.x1)/2, hh:(rect.y2-rect.y1)/2, pinned:!!pinned, ref:ref };
+}
+// Pushes overlapping bodies apart along the axis of least penetration. The hub
+// and the site circles are pinned, so only issue groups move. Anything closer
+// than padHard is pushed out to padTarget; once nothing is closer than padHard
+// it stops. Bodies are swept left-to-right so only near neighbours are tested.
+function resolveOverlaps(bodies, padTarget, padHard, maxIter){
+  var n = bodies.length;
+  for(var it=0; it<maxIter; it++){
+    var idx = []; for(var q=0;q<n;q++) idx.push(q);
+    idx.sort(function(a,b){
+      return (bodies[a].x+bodies[a].ox-bodies[a].hw) - (bodies[b].x+bodies[b].ox-bodies[b].hw);
+    });
+    var moved = false;
+    for(var ia=0; ia<n; ia++){
+      var A = bodies[idx[ia]], aRight = A.x+A.ox+A.hw+padHard;
+      for(var ib=ia+1; ib<n; ib++){
+        var B = bodies[idx[ib]];
+        if(B.x+B.ox-B.hw >= aRight) break;            // sorted: nothing further right can touch A
+        if(A.pinned && B.pinned) continue;
+        var dx = (B.x+B.ox)-(A.x+A.ox), dy = (B.y+B.oy)-(A.y+A.oy);
+        if(A.hw+B.hw+padHard-Math.abs(dx) <= 0 || A.hh+B.hh+padHard-Math.abs(dy) <= 0) continue;
+        moved = true;
+        var px = A.hw+B.hw+padTarget-Math.abs(dx), py = A.hh+B.hh+padTarget-Math.abs(dy);
+        var wa = A.pinned ? 0 : (B.pinned ? 1 : 0.5), wb = 1-wa;
+        if(px<py){
+          var sx = dx>0 ? 1 : (dx<0 ? -1 : ((idx[ia]+idx[ib])%2 ? 1 : -1));
+          A.x -= sx*px*wa; B.x += sx*px*wb;
+        }else{
+          var sy = dy>0 ? 1 : (dy<0 ? -1 : ((idx[ia]+idx[ib])%2 ? 1 : -1));
+          A.y -= sy*py*wa; B.y += sy*py*wb;
+        }
+      }
+    }
+    if(!moved) return true;
+  }
+  return false;
+}
+function countOverlaps(bodies, pad){
+  var c = 0;
+  for(var i=0;i<bodies.length;i++){
+    for(var j=i+1;j<bodies.length;j++){
+      var A = bodies[i], B = bodies[j];
+      var px = A.hw+B.hw+pad-Math.abs((B.x+B.ox)-(A.x+A.ox));
+      var py = A.hh+B.hh+pad-Math.abs((B.y+B.oy)-(A.y+A.oy));
+      if(px>0 && py>0) c++;
+    }
+  }
+  return c;
+}
+
+// Default (un-dragged) positions for everything. Sites sit on concentric rings,
+// one ring per registration week; each site's issues fan OUTWARD from it, with
+// progress markers continuing outward past each issue.
+function computeBaseLayout(list){
+  var sitesMap = {}, order = [];
   list.forEach(function(iss){
     if(!sitesMap[iss.site]){ sitesMap[iss.site]=[]; order.push(iss.site); }
     sitesMap[iss.site].push(iss);
   });
-  var issueFootprint = Math.hypot(ISSUE_W/2, ISSUE_H/2);
-  var issueRadii = {};
-  order.forEach(function(s){ issueRadii[s] = ringRadius(sitesMap[s].length, issueFootprint, 105); });
+  if(order.length===0) return { sites:[], issues:[], rings:[] };
+  var fp = Math.hypot(ISSUE_W/2, ISSUE_H/2);
+  var CARD_R = Math.hypot(CARD_W/2, CARD_H/2);
 
-  // How far each site's own issue fan (plus its longest progress timeline)
-  // reaches outward from that site's own center — used to space rings far
-  // enough apart that one layer's branches never collide with the next.
-  var siteReach = {};
+  // each site's fan of issues (before any scaling)
+  var info = {};
   order.forEach(function(s){
-    var maxProg = 0;
-    sitesMap[s].forEach(function(iss){ maxProg = Math.max(maxProg, Math.min((iss.progress||[]).length,6)); });
-    var progBuffer = maxProg>0 ? (26 + (maxProg-1)*34 + 40) : 20;
-    siteReach[s] = issueRadii[s] + issueFootprint + progBuffer;
+    var n = sitesMap[s].length, maxProg = 0;
+    sitesMap[s].forEach(function(i){ maxProg = Math.max(maxProg, Math.min((i.progress||[]).length, 6)); });
+    var rf = Math.max(125, (n-1)*FAN_CHORD/2.8);
+    var spread = n>1 ? Math.min(0.9*Math.PI, (n-1)*FAN_CHORD/rf) : 0;
+    var tail = maxProg>0 ? fp + 26 + (maxProg-1)*60 + TIP_W : fp;
+    var boxW = maxProg>0 ? Math.max(ISSUE_W, TIP_W) : ISSUE_W;
+    info[s] = { n:n, rf:rf, spread:spread, reach:rf+tail,
+                width:Math.max(2*SITE_R, 2*rf*Math.sin(spread/2) + boxW) };
   });
 
-  // Group sites into concentric ring "layers" by the week their earliest
-  // issue was registered, instead of cramming every site onto one ring —
-  // this is what actually eliminates crowding/overlap when there are many
-  // sites, and gives the map a natural sense of "older sites inward, newer
-  // sites outward."
-  var WEEK_MS = 7*24*3600*1000;
+  // one ring ("layer") per registration week, same-region sites kept side by side
   var siteWeek = {};
   order.forEach(function(s){
-    var earliest = Math.min.apply(null, sitesMap[s].map(function(i){ return i.ts; }));
-    siteWeek[s] = Math.floor(earliest/WEEK_MS);
+    siteWeek[s] = weekIndexOf(Math.min.apply(null, sitesMap[s].map(function(i){ return i.ts; })));
   });
-  var distinctWeeks = Array.from(new Set(order.map(function(s){ return siteWeek[s]; })))
-    .sort(function(a,b){ return a-b; });
-  var weekLayerIndex = {};
-  distinctWeeks.forEach(function(w,i){ weekLayerIndex[w] = i; });
-
+  var weeks = Array.from(new Set(order.map(function(s){ return siteWeek[s]; }))).sort(function(a,b){ return a-b; });
+  var layerOf = {}; weeks.forEach(function(w,i){ layerOf[w] = i; });
   var layers = [];
-  order.forEach(function(s){
-    var L = weekLayerIndex[siteWeek[s]];
-    if(!layers[L]) layers[L] = [];
-    layers[L].push(s);
-  });
-
-  var layerRadius = [], layerMaxReach = [];
-  layers.forEach(function(sitesInLayer, L){
-    var maxReach = 0;
-    sitesInLayer.forEach(function(s){ maxReach = Math.max(maxReach, siteReach[s]); });
-    layerMaxReach[L] = maxReach;
-    var ownRing = ringRadius(sitesInLayer.length, SITE_R, 170);
-    layerRadius[L] = (L===0) ? ownRing : Math.max(ownRing, layerRadius[L-1] + layerMaxReach[L-1] + 80);
-  });
-
-  var siteNodes = [];
-  layers.forEach(function(sitesInLayer, L){
-    var n = sitesInLayer.length;
-    sitesInLayer.forEach(function(s, i){
-      var angle = n ? (2*Math.PI*i/n - Math.PI/2) : 0;
-      if(L%2===1 && n) angle += Math.PI/n; // stagger odd layers so spokes don't line up radially
-      var dx = layerRadius[L]*Math.cos(angle), dy = layerRadius[L]*Math.sin(angle);
-      var ov = nodePositions["site:"+s];
-      siteNodes.push({ site:s, x: ov?ov.x:dx, y: ov?ov.y:dy, angle:angle, layer:L, weekKey:siteWeek[s] });
+  order.forEach(function(s){ var L = layerOf[siteWeek[s]]; (layers[L] = layers[L] || []).push(s); });
+  layers.forEach(function(arr){
+    arr.sort(function(a,b){
+      var ra = REGION_ORDER.indexOf(getRegion(a)), rb = REGION_ORDER.indexOf(getRegion(b));
+      return ra!==rb ? ra-rb : (a<b ? -1 : a>b ? 1 : 0);
     });
   });
 
-  var issueNodes = [];
-  siteNodes.forEach(function(sn){
-    var list2 = sitesMap[sn.site];
-    var n = list2.length;
-    var r = issueRadii[sn.site];
-    var startAngle = sn.angle - Math.PI;
-    list2.forEach(function(iss,j){
-      var a = startAngle + (n ? (2*Math.PI*j/n) : 0);
-      var dx = sn.x + r*Math.cos(a), dy = sn.y + r*Math.sin(a);
-      var ov = nodePositions["issue:"+iss.id];
-      issueNodes.push({ issue:iss, x: ov?ov.x:dx, y: ov?ov.y:dy, sx:sn.x, sy:sn.y });
+  function place(scale){
+    var sites = [], issueBodies = [], layerR = [], layerReach = [], rings = [];
+    layers.forEach(function(arr, L){
+      var maxReach = 0;
+      arr.forEach(function(s){ maxReach = Math.max(maxReach, info[s].reach*scale); });
+      layerReach[L] = maxReach;
+      var R = (L===0) ? (CARD_R + SITE_R + 50)*scale : layerR[L-1] + layerReach[L-1] + SITE_R + 60;
+      function slot(s, rr){ return (info[s].width*scale + 36) / (rr + info[s].rf*scale*0.6); }
+      function total(rr){ var t = 0; arr.forEach(function(s){ t += slot(s, rr); }); return t; }
+      while(total(R) > 2*Math.PI*0.96) R += Math.max(12, R*0.03);
+      layerR[L] = R;
+      var slots = arr.map(function(s){ return slot(s, R); });
+      var extra = (2*Math.PI - slots.reduce(function(a,b){ return a+b; }, 0)) / arr.length;
+      var a = -Math.PI/2 - (slots[0]+extra)/2;           // first site is centred at the top
+      // week label sits on the ring in the gap between the last and first site
+      rings.push({ layer:L, r:R, label:"W"+isoWeekNumber(siteWeek[arr[0]]), lx:R*Math.cos(a), ly:R*Math.sin(a) });
+      arr.forEach(function(s, i){
+        var w = slots[i] + extra, theta = a + w/2; a += w;
+        var sx = R*Math.cos(theta), sy = R*Math.sin(theta), inf = info[s], rfS = inf.rf*scale;
+        sites.push({ site:s, x:sx, y:sy, angle:theta, layer:L, weekKey:siteWeek[s] });
+        sitesMap[s].forEach(function(iss, j){
+          var phi = inf.n>1 ? -inf.spread/2 + inf.spread*j/(inf.n-1) : 0;
+          issueBodies.push(makeBody(sx + rfS*Math.cos(theta+phi), sy + rfS*Math.sin(theta+phi),
+            relHull(iss, theta), false, { id:iss.id, site:s, theta:theta }));
+        });
+      });
     });
-  });
-  return { siteNodes:siteNodes, issueNodes:issueNodes };
+    return { sites:sites, issueBodies:issueBodies, rings:rings };
+  }
+
+  var hub = makeBody(0, 0, { x1:-CARD_W/2, x2:CARD_W/2, y1:-CARD_H/2, y2:CARD_H/2 }, true, null);
+  var placed = null, scale = 1;
+  for(var attempt=0; attempt<8; attempt++){
+    placed = place(scale);
+    var bodies = [hub];
+    placed.rings.forEach(function(g){
+      bodies.push(makeBody(g.lx, g.ly, { x1:-17, x2:17, y1:-9, y2:9 }, true, g));
+    });
+    placed.sites.forEach(function(s){
+      bodies.push(makeBody(s.x, s.y, { x1:-SITE_R, x2:SITE_R, y1:-SITE_R, y2:SITE_R }, true, s));
+    });
+    bodies = bodies.concat(placed.issueBodies);
+    resolveOverlaps(bodies, LAYOUT_PAD, 4, 60);
+    if(countOverlaps(bodies, 4)===0) break;
+    scale *= 1.18;      // couldn't fully clear it — give everything more room and retry
+  }
+  return {
+    sites: placed.sites,
+    rings: placed.rings,
+    issues: placed.issueBodies.map(function(b){
+      return { id:b.ref.id, site:b.ref.site, x:b.x, y:b.y, chainAngle:b.ref.theta };
+    })
+  };
 }
-function fitToScreen(){
-  var list = getVisible();
-  var layout = computeLayout(list);
-  var xs=[0], ys=[0];
-  layout.siteNodes.forEach(function(n){ xs.push(n.x-SITE_R, n.x+SITE_R); ys.push(n.y-SITE_R, n.y+SITE_R); });
-  layout.issueNodes.forEach(function(n){
-    xs.push(n.x-ISSUE_W/2, n.x+ISSUE_W/2); ys.push(n.y-ISSUE_H/2, n.y+ISSUE_H/2);
-    var progCount = Math.min((n.issue.progress||[]).length, 6);
-    if(progCount>0){
-      var issueFootprint = Math.hypot(ISSUE_W/2, ISSUE_H/2);
-      var baseAngle = Math.atan2(n.y-n.sy, n.x-n.sx);
-      var maxDist = issueFootprint + 26 + (progCount-1)*34;
-      xs.push(n.x + maxDist*Math.cos(baseAngle));
-      ys.push(n.y + maxDist*Math.sin(baseAngle));
-    }
+
+var layoutCache = { key:null, data:null };
+function computeLayout(list){
+  var key = list.map(function(i){
+    return i.id+"~"+i.site+"~"+Math.min((i.progress||[]).length,6)+"~"+i.ts;
+  }).join("|");
+  if(layoutCache.key!==key){ layoutCache = { key:key, data:computeBaseLayout(list) }; }
+  var base = layoutCache.data;
+  var byId = {}; list.forEach(function(i){ byId[i.id] = i; });
+
+  // Dragged positions override the defaults. Dragging a site carries its issues
+  // along with it, unless an issue has been dragged on its own.
+  var delta = {}, siteXY = {}, siteNodes = [];
+  base.sites.forEach(function(s){
+    var ov = nodePositions["site:"+s.site];
+    var x = ov ? ov.x : s.x, y = ov ? ov.y : s.y;
+    delta[s.site] = { dx:x-s.x, dy:y-s.y };
+    var node = { site:s.site, x:x, y:y, angle:s.angle, layer:s.layer, weekKey:s.weekKey };
+    siteXY[s.site] = node; siteNodes.push(node);
   });
-  var pad = 50;
-  var w = (Math.max.apply(null,xs)-Math.min.apply(null,xs))+2*pad;
-  var h = (Math.max.apply(null,ys)-Math.min.apply(null,ys))+2*pad;
+  var issueNodes = base.issues.map(function(b){
+    var ov = nodePositions["issue:"+b.id], d = delta[b.site], sn = siteXY[b.site];
+    return { issue:byId[b.id], x: ov ? ov.x : b.x+d.dx, y: ov ? ov.y : b.y+d.dy,
+             sx:sn.x, sy:sn.y, chainAngle:b.chainAngle };
+  });
+  // overall extent (including progress markers) so Fit can frame everything
+  var e = { x1:-CARD_W/2, x2:CARD_W/2, y1:-CARD_H/2, y2:CARD_H/2 };
+  siteNodes.forEach(function(n){
+    e.x1 = Math.min(e.x1, n.x-SITE_R); e.x2 = Math.max(e.x2, n.x+SITE_R);
+    e.y1 = Math.min(e.y1, n.y-SITE_R); e.y2 = Math.max(e.y2, n.y+SITE_R);
+  });
+  issueNodes.forEach(function(n){
+    var h = relHull(n.issue, n.chainAngle);
+    e.x1 = Math.min(e.x1, n.x+h.x1); e.x2 = Math.max(e.x2, n.x+h.x2);
+    e.y1 = Math.min(e.y1, n.y+h.y1); e.y2 = Math.max(e.y2, n.y+h.y2);
+  });
+  return { siteNodes:siteNodes, issueNodes:issueNodes, rings:base.rings, extent:e };
+}
+// LAYOUT-END
+
+function fitToScreen(){
+  var layout = computeLayout(getVisible());
+  var e = layout.extent, pad = 50;
+  var w = (e.x2-e.x1)+2*pad, h = (e.y2-e.y1)+2*pad;
   var svg = document.getElementById("mapSvg");
   var cw = svg.clientWidth||360, ch = svg.clientHeight||500;
-  var z = Math.min(cw/w, ch/h);
-  zoom = Math.max(minZoom, Math.min(z, 1.3));
-  panX = -((Math.min.apply(null,xs)+Math.max.apply(null,xs))/2)*zoom;
-  panY = -((Math.min.apply(null,ys)+Math.max.apply(null,ys))/2)*zoom;
+  zoom = Math.max(minZoom, Math.min(Math.min(cw/w, ch/h), 1.3));
+  panX = -((e.x1+e.x2)/2)*zoom;
+  panY = -((e.y1+e.y2)/2)*zoom;
   renderMap();
 }
 
@@ -752,6 +1030,11 @@ var _measureCtx = document.createElement("canvas").getContext("2d");
 function measureWidth(text, fontPx){
   _measureCtx.font = fontPx+"px Segoe UI, -apple-system, sans-serif";
   return _measureCtx.measureText(text).width;
+}
+function fitLabel(text, maxW, fontPx){
+  if(measureWidth(text, fontPx) <= maxW) return text;
+  while(text.length>1 && measureWidth(text+"…", fontPx) > maxW) text = text.slice(0,-1);
+  return text.replace(/\s+$/,"") + "…";
 }
 function wrapToWidth(text, maxWidthPx, fontPx, maxLines){
   var words = text.split(" ");
@@ -779,6 +1062,21 @@ function wrapToWidth(text, maxWidthPx, fontPx, maxLines){
   }
   if(current) lines.push(current);
   return lines.slice(0, maxLines);
+}
+// Site -> issue branch: an S-curve that leaves the site along the bearing of
+// its own issue (so neighbouring branches fan apart immediately), with a
+// pointAt(t) so the registration date can sit right where the root starts.
+function rootPath(x1,y1,x2,y2){
+  var dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len, k=len*0.10;
+  var c1x=x1+dx*0.35+nx*k, c1y=y1+dy*0.35+ny*k, c2x=x2-dx*0.35-nx*k, c2y=y2-dy*0.35-ny*k;
+  return {
+    d:"M "+x1+","+y1+" C "+c1x+","+c1y+" "+c2x+","+c2y+" "+x2+","+y2,
+    at:function(t){
+      var u=1-t;
+      return { x:u*u*u*x1+3*u*u*t*c1x+3*u*t*t*c2x+t*t*t*x2,
+               y:u*u*u*y1+3*u*u*t*c1y+3*u*t*t*c2y+t*t*t*y2 };
+    }
+  };
 }
 function sCurvePath(x1,y1,x2,y2){
   var mx = x1 + (x2-x1)*0.55;
@@ -812,6 +1110,18 @@ function renderMap(){
   var colorMap = {};
   siteNames.forEach(function(s,i){ colorMap[s]=SITE_COLORS[i%SITE_COLORS.length]; });
 
+  // the real week rings, labelled with their week number
+  (layout.rings||[]).forEach(function(g){
+    nodesG.appendChild(svgEl("circle",{cx:0,cy:0,r:g.r,fill:"none",stroke:"#37D6C4","stroke-opacity":.16,
+      "stroke-width":1.2,"stroke-dasharray":"3 7"}));
+    nodesG.appendChild(svgEl("rect",{x:g.lx-15,y:g.ly-8,width:30,height:16,rx:8,fill:"#0B1322",
+      stroke:"#37D6C4","stroke-opacity":.35,"stroke-width":1}));
+    var wt = svgEl("text",{x:g.lx,y:g.ly+3,"text-anchor":"middle",fill:"#9FB0C8","font-size":8,
+      "font-weight":700,"font-family":"var(--mono)"});
+    wt.textContent = g.label;
+    nodesG.appendChild(wt);
+  });
+
   // center -> site curves (glowing signal lines)
   layout.siteNodes.forEach(function(sn){
     var p = svgEl("path",{ d:sCurvePath(0,0,sn.x,sn.y), fill:"none", stroke:colorMap[sn.site],
@@ -823,12 +1133,16 @@ function renderMap(){
     var iss = n.issue;
     var col = colorMap[iss.site];
     var selected = selectedId===iss.id;
-    var p = svgEl("path",{ d:sCurvePath(n.sx,n.sy,n.x,n.y), fill:"none", stroke:col,
+    var rp = rootPath(n.sx,n.sy,n.x,n.y);
+    var p = svgEl("path",{ d:rp.d, fill:"none", stroke:col,
       "stroke-width": selected?2.4:1.6, "stroke-linecap":"round", opacity:.8,
       filter: selected ? "url(#glowSoft)" : undefined });
     nodesG.appendChild(p);
-    var dir = n.x>=n.sx ? 1 : -1;
-    var dt = svgEl("text",{x:n.sx+dir*(SITE_R+10), y:n.sy-9, "text-anchor":(dir>0?"start":"end"), fill:"#7E91AC",
+    // registration date: just outside the site circle, on this issue's own root line
+    var dt0 = 0.04, dpt = rp.at(dt0);
+    while(dt0<0.6 && Math.hypot(dpt.x-n.sx, dpt.y-n.sy) < SITE_R+16){ dt0 += 0.02; dpt = rp.at(dt0); }
+    var ddir = dpt.x>=n.sx ? 1 : -1;
+    var dt = svgEl("text",{x:dpt.x+ddir*3, y:dpt.y-6, "text-anchor":(ddir>0?"start":"end"), fill:"#7E91AC",
       "font-size":9, "font-style":"italic", "font-family":"var(--mono)"});
     dt.textContent = fmtDate(iss.ts);
     nodesG.appendChild(dt);
@@ -837,20 +1151,17 @@ function renderMap(){
     // outward, oldest closest to the issue box, most recent at the tip.
     var progList = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; }).slice(-6);
     if(progList.length>0){
-      var baseAngle = Math.atan2(n.y-n.sy, n.x-n.sx);
-      var issueFootprint = Math.hypot(ISSUE_W/2, ISSUE_H/2);
+      var offs = chainOffsets(iss, n.chainAngle);
       var prevX = n.x, prevY = n.y;
       progList.forEach(function(p, k){
-        var dist = issueFootprint + 26 + k*34;
-        var px = n.x + dist*Math.cos(baseAngle), py = n.y + dist*Math.sin(baseAngle);
+        var m = offs[k], px = n.x + m.dx, py = n.y + m.dy;
         var pp = svgEl("path",{ d:sCurvePath(prevX,prevY,px,py), fill:"none", stroke:"#B9A6FF",
           "stroke-width":1.5, "stroke-linecap":"round", "stroke-dasharray":"1 3.4", opacity:.75 });
         nodesG.appendChild(pp);
         nodesG.appendChild(svgEl("circle",{cx:px,cy:py,r:4.2,fill:"#B9A6FF",filter:"url(#glowSoft)"}));
-        var words = p.note.split(" ").slice(0,3).join(" ") + (p.note.split(" ").length>3?"…":"");
-        var pt = svgEl("text",{x:px, y:py-9, "text-anchor":"middle", fill:"#C7B8FF",
+        var pt = svgEl("text",{x:n.x+m.lx, y:n.y+m.ly, "text-anchor":m.anchor, fill:"#C7B8FF",
           "font-size":7.5, "font-style":"italic"});
-        pt.textContent = fmtDate(p.ts)+": "+words;
+        pt.textContent = m.tip ? fitLabel(fmtDate(p.ts)+": "+p.note, TIP_W-8, 7.5) : fmtDate(p.ts);
         nodesG.appendChild(pt);
         prevX = px; prevY = py;
       });
@@ -867,9 +1178,15 @@ function renderMap(){
     g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R+3,fill:col,opacity:.18,filter:"url(#glowStrong)"}));
     g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R,fill:"#0F1829",stroke:col,"stroke-width":2.2,opacity:.96}));
     g.appendChild(svgEl("circle",{cx:sn.x,cy:sn.y,r:SITE_R-1.5,fill:"url(#specular)"}));
-    var t = svgEl("text",{x:sn.x,y:sn.y+4,"text-anchor":"middle",fill:"#F2F6FC","font-size":10,"font-weight":700});
+    var region = getRegion(sn.site);
+    var t = svgEl("text",{x:sn.x,y:sn.y-1,"text-anchor":"middle",fill:"#F2F6FC",
+      "font-size": sn.site.length>9 ? 8 : 10,"font-weight":700});
     t.textContent = sn.site;
     g.appendChild(t);
+    var rt = svgEl("text",{x:sn.x,y:sn.y+12,"text-anchor":"middle",fill:REGION_COLORS[region],
+      "font-size":7.5,"font-weight":800,"letter-spacing":"1.2","font-family":"var(--mono)"});
+    rt.textContent = region.toUpperCase();
+    g.appendChild(rt);
     nodesG.appendChild(g);
     attachDrag(g, "site", sn.site);
   });
@@ -972,12 +1289,20 @@ function showDetail(){
   var iss = issues.find(function(i){ return i.id===selectedId; });
   if(!iss){ bar.classList.remove("show"); return; }
   document.getElementById("detailTxt").innerHTML =
-    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+"<br>"+esc(iss.issue);
+    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+"<br>"+esc(iss.issue);
+  var b1 = document.getElementById("detailToggle"), b2 = document.getElementById("detailToggle2");
+  function setBtn(btn, act, label, cls){ btn.textContent = label; btn.setAttribute("data-status-act", act); btn.className = cls; }
+  if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
+  else if(iss.status==="Verification"){ setBtn(b1,"pass","✓ PASS","btn-pass"); setBtn(b2,"fail","✕ FAIL","btn-fail"); b2.style.display = ""; }
+  else { setBtn(b1,"reopen","REOPEN","btn-reopen"); b2.style.display = "none"; }
   bar.classList.add("show");
 }
 document.getElementById("detailEdit").addEventListener("click", function(){ if(selectedId) openEdit(selectedId); });
-document.getElementById("detailToggle").addEventListener("click", function(){
-  if(selectedId){ toggleStatus(selectedId); refreshAll(false); showToast("Status updated"); showDetail(); }
+["detailToggle","detailToggle2"].forEach(function(bid){
+  document.getElementById(bid).addEventListener("click", function(){
+    var act = this.getAttribute("data-status-act");
+    if(selectedId && act) doStatusAction(act, selectedId);
+  });
 });
 document.getElementById("detailDel").addEventListener("click", function(){
   if(selectedId) confirmDeleteIssue(selectedId);
@@ -1065,7 +1390,7 @@ document.getElementById("formSave").addEventListener("click", function(){
     showToast(editingId+" updated");
   }else{
     var iss = addIssue(site, text);
-    filter="All"; siteFilter="All Sites"; search="";
+    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search="";
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
     setActiveChip("All");
@@ -1171,6 +1496,10 @@ document.getElementById("progressSave").addEventListener("click", function(){
 document.getElementById("searchInput").addEventListener("input", function(e){
   search = e.target.value; refreshAll(true);
 });
+document.getElementById("regionSelect").addEventListener("change", function(e){
+  regionFilter = e.target.value;
+  refreshAll(true); // refreshSiteSelect drops the site filter if that site isn't in this region
+});
 document.getElementById("siteSelect").addEventListener("change", function(e){
   siteFilter = e.target.value; refreshAll(true);
 });
@@ -1212,20 +1541,20 @@ function download(filename, blob){
 }
 document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
-  var lines = ["ID,Site,Issue,Status,Logged At"];
+  var lines = ["ID,Site,Region,Issue,Status,Logged At"];
   rows.forEach(function(iss){
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
-    var vals = [iss.id, iss.site, '"'+iss.issue.replace(/"/g,'""')+'"', iss.status, d];
+    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.status, d];
     lines.push(vals.join(","));
   });
-  download("site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
+  download("OPS site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
   showToast("Exported "+rows.length+" issues to CSV");
 });
 document.getElementById("mBackup").addEventListener("click", function(){
   // Always backs up EVERYTHING, ignoring any active filter/search —
   // a backup should be a full snapshot, not a partial view.
   var payload = {
-    app: "Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
+    app: "OPS Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
         ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown" };
@@ -1235,7 +1564,7 @@ document.getElementById("mBackup").addEventListener("click", function(){
   download("site_acceptance_alarmtracking_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
-var ADMIN_NAME = "ZASSSAH";
+var ADMIN_NAME = "ZASSAH";
 function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
@@ -1256,6 +1585,7 @@ document.getElementById("restoreFileInput").addEventListener("change", function(
     if(!Array.isArray(list)){ showToast("File doesn't look like a valid backup"); return; }
     var valid = list.filter(function(r){ return r && r.id && r.site && r.issue && r.status && r.ts; });
     if(valid.length===0){ showToast("No valid issues found in that file"); return; }
+    valid.forEach(function(r){ r.status = normStatus(r.status); });
 
     var owner = prompt(
       "Attribute these "+valid.length+" imported issue"+(valid.length!==1?"s":"")+" to which owner?\n\n"+
@@ -1400,31 +1730,41 @@ document.getElementById("mExcel").addEventListener("click", function(){
   // ── Sheet 1: Site Issues (with a progress summary per issue) ──
   var rowsXml = ['<Row><Cell ss:StyleID="header"><Data ss:Type="String">ID</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Site</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Status</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Owner</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Logged At</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Progress Count</Data></Cell>'+
-    '<Cell ss:StyleID="header"><Data ss:Type="String">Last Update</Data></Cell></Row>'];
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Latest Progress Note</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Update By</Data></Cell></Row>'];
   rows.forEach(function(iss){
-    var style = iss.status==="Open" ? "open" : "closed";
+    var style = iss.status==="Open" ? "open" : (iss.status==="Verification" ? "verify" : "closed");
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
-    var lastUpdate = prog.length>0 ? new Date(prog[prog.length-1].ts).toISOString().slice(0,19).replace("T"," ") : "";
+    var latest = prog.length>0 ? prog[prog.length-1] : null;   // most recent timeline entry
+    var latestNote = latest ? latest.note : "";
+    var latestTime = latest ? new Date(latest.ts).toISOString().slice(0,19).replace("T"," ") : "";
+    var latestBy = latest ? (latest.by||"Unknown") : "";
     rowsXml.push("<Row>"+
       '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.issue)+'</Data></Cell>'+
       '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(iss.status)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.owner||"Unknown")+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(d)+'</Data></Cell>'+
       '<Cell><Data ss:Type="Number">'+prog.length+'</Data></Cell>'+
-      '<Cell><Data ss:Type="String">'+esc(lastUpdate)+'</Data></Cell></Row>');
+      '<Cell><Data ss:Type="String">'+esc(latestNote)+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(latestTime)+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(latestBy)+'</Data></Cell></Row>');
   });
 
   // ── Sheet 2: Progress History (one row per timestamped update, across all issues) ──
   var progRowsXml = ['<Row><Cell ss:StyleID="header"><Data ss:Type="String">Issue ID</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Site</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">By</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Note</Data></Cell></Row>'];
@@ -1435,6 +1775,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
       progRowsXml.push("<Row>"+
         '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(pd)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(p.by||"Unknown")+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(p.note)+'</Data></Cell></Row>');
@@ -1450,10 +1791,11 @@ document.getElementById("mExcel").addEventListener("click", function(){
     'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n'+
     '<Styles>\n<Style ss:ID="header"><Font ss:Bold="1"/><Interior ss:Color="#DDE3EC" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="open"><Interior ss:Color="#FCE4C4" ss:Pattern="Solid"/></Style>\n'+
+    '<Style ss:ID="verify"><Interior ss:Color="#D3E3FF" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="closed"><Interior ss:Color="#C9F0D8" ss:Pattern="Solid"/></Style>\n</Styles>\n'+
     '<Worksheet ss:Name="Site Issues"><Table>\n'+rowsXml.join("\n")+'\n</Table></Worksheet>\n'+
     '<Worksheet ss:Name="Progress History"><Table>\n'+progRowsXml.join("\n")+'\n</Table></Worksheet>\n</Workbook>';
-  download("site_acceptance_alarms.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
+  download("OPS site_acceptance_alarms.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
   showToast("Exported "+rows.length+" issues + "+totalProgressEntries+" progress entries");
 });
 document.getElementById("mSvg").addEventListener("click", function(){
@@ -1515,7 +1857,19 @@ function showToast(msg){
 }
 
 // ───────────────────────── refresh ─────────────────────────
+function refreshRegionSelect(){
+  var sel = document.getElementById("regionSelect");
+  var counts = {}; REGION_ORDER.forEach(function(r){ counts[r]=0; });
+  issues.forEach(function(i){ counts[getRegion(i.site)]++; });
+  var html = '<option value="All Regions"'+(regionFilter==="All Regions"?" selected":"")+'>All Regions ('+issues.length+')</option>';
+  REGION_ORDER.forEach(function(r){
+    if(r==="Other" && counts[r]===0 && regionFilter!=="Other") return; // only show Other if something lands there
+    html += '<option value="'+r+'"'+(regionFilter===r?" selected":"")+'>'+r+' ('+counts[r]+')</option>';
+  });
+  sel.innerHTML = html;
+}
 function refreshSiteSelect(){
+  refreshRegionSelect();
   var sel = document.getElementById("siteSelect");
   var sites = ["All Sites"].concat(getSiteList());
   var cur = siteFilter;
@@ -1524,9 +1878,11 @@ function refreshSiteSelect(){
 }
 function refreshStats(){
   var open = issues.filter(function(i){return i.status==="Open";}).length;
-  var closed = issues.filter(function(i){return i.status==="Closed";}).length;
+  var verifying = issues.filter(function(i){return i.status==="Verification";}).length;
+  var resolved = issues.filter(function(i){return i.status==="Resolved";}).length;
   document.getElementById("statOpen").textContent = open;
-  document.getElementById("statClosed").textContent = closed;
+  document.getElementById("statVerify").textContent = verifying;
+  document.getElementById("statResolved").textContent = resolved;
   document.getElementById("statTotal").textContent = issues.length;
 }
 function refreshAll(refit){
@@ -1555,7 +1911,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. ZASSSAH (admin) is always
+// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
@@ -1600,7 +1956,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
       errEl.style.display = "block";
       return;
     }
