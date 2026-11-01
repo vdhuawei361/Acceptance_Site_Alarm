@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>OPS Site Acceptance Alarm Tracking</title>
+<title>Site Acceptance Alarm Tracking</title>
 <!-- Firebase (only used if FIREBASE_ENABLED is set to true near the top of the script below) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -183,6 +183,12 @@
     border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
   .sheet textarea{resize:vertical; min-height:70px;}
+  .plan-row{display:flex; justify-content:space-between; align-items:flex-end;}
+  .plan-row label{margin-bottom:4px;}
+  #planClear{background:none; border:none; color:var(--accent); font-size:11px; font-weight:700; padding:4px 0;}
+  .sheet input[type=date]{min-height:44px; -webkit-appearance:none; appearance:none; text-align:left;}
+  .plan{font-size:11px; color:var(--subtext); font-family:var(--mono); margin-bottom:8px;}
+  .plan.overdue{color:var(--danger);}
   .sheet .btnrow{display:flex; gap:8px; margin-top:16px;}
   .sheet .btnrow button{flex:1; padding:12px 0; border-radius:10px; border:none; font-size:13px; font-weight:700;}
   .btn-cancel{background:var(--inputBg); color:var(--muted);}
@@ -214,7 +220,7 @@
     <div class="brand">
       <div class="icon">📡</div>
       <div class="titles">
-        <div class="t1">OPS Site Acceptance</div>
+        <div class="t1">Site Acceptance</div>
         <div class="t2" id="syncBadge">ALARM TRACKING</div>
       </div>
     </div>
@@ -319,6 +325,8 @@
     <input id="formSite" placeholder="e.g. BTS-NORTH-01">
     <label>ISSUE DESCRIPTION</label>
     <textarea id="formIssue" placeholder="Describe the fault or problem…"></textarea>
+    <div class="plan-row"><label>PLAN DATE</label><button type="button" id="planClear">Clear</button></div>
+    <input type="date" id="formPlanDate">
     <div class="btnrow">
       <button class="btn-cancel" id="formCancel">Cancel</button>
       <button class="btn-save" id="formSave">Save</button>
@@ -359,7 +367,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. (admin) can always sign in.
+      Only names added here can sign in to this app. ZASSAH (admin) can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -469,7 +477,7 @@ function loadAll(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     issues = raw ? JSON.parse(raw) : null;
-    if(issues) issues.forEach(function(i){ i.status = normStatus(i.status); });
+    if(issues) issues.forEach(function(i){ i.status = normStatus(i.status); i.planDate = normPlanDate(i.planDate); });
   }catch(e){ issues = null; }
   if(!issues){
     var now = Date.now();
@@ -488,7 +496,7 @@ function initFirestoreSync(){
     issues = [];
     snapshot.forEach(function(doc){
       var d = doc.data();
-      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown" });
+      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown", planDate: normPlanDate(d.planDate) });
     });
     // Don't auto-refit the map on every remote change — that would yank
     // your zoom/pan out from under you mid-edit. Use the Fit button if needed.
@@ -524,12 +532,13 @@ function mkIssue(site, text, status, ts){
 }
 
 // ───────────────────────── data ops ─────────────────────────
-function addIssue(site, text){
+function addIssue(site, text, planDate){
   var now = Date.now();
   var owner = currentUser || "Unknown";
-  var iss = { id: nextId(), site: site, issue: text, status: "Open", ts: now, updated: now, progress: [], owner: owner };
+  var iss = { id: nextId(), site: site, issue: text, status: "Open", ts: now, updated: now, progress: [], owner: owner,
+              planDate: normPlanDate(planDate) };
   if(FIREBASE_ENABLED){
-    db.collection(COLLECTION).doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner })
+    db.collection(COLLECTION).doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner, planDate: iss.planDate })
       .catch(function(err){ console.error(err); showToast("Could not save — check connection"); });
     // local `issues` array updates itself via the onSnapshot listener
   }else{
@@ -556,16 +565,17 @@ function addProgressNote(id, note){
     refreshAll(false);
   }
 }
-function updateIssueData(id, site, text){
+function updateIssueData(id, site, text, planDate){
   var now = Date.now();
+  planDate = normPlanDate(planDate);
   if(FIREBASE_ENABLED){
-    db.collection(COLLECTION).doc(id).update({ site: site, issue: text, updated: now })
+    db.collection(COLLECTION).doc(id).update({ site: site, issue: text, planDate: planDate, updated: now })
       .catch(function(err){ console.error(err); showToast("Could not update — check connection"); });
     return true;
   }
   var iss = issues.find(function(i){ return i.id===id; });
   if(!iss) return false;
-  iss.site = site; iss.issue = text; iss.updated = now;
+  iss.site = site; iss.issue = text; iss.planDate = planDate; iss.updated = now;
   saveIssues();
   return true;
 }
@@ -691,6 +701,7 @@ function renderList(){
       '<div class="site">'+esc(iss.site)+'</div>'+
       '<div class="desc">'+esc(iss.issue)+'</div>'+
       '<div class="meta">'+fmtTime(iss.ts)+' · registered '+fmtDate(iss.ts)+' · by '+esc(iss.owner||"Unknown")+'</div>'+
+      (iss.planDate ? '<div class="plan'+(isOverdue(iss)?' overdue':'')+'">📅 Plan '+fmtPlan(iss.planDate)+(isOverdue(iss)?' · overdue':'')+'</div>' : '')+
       timelineHtml+
       '<div class="actions">'+
         '<button class="btn-edit" data-act="edit">Edit</button>'+
@@ -757,6 +768,20 @@ function isoWeekNumber(weekIdx){
   var wk1Thursday = jan4 + (3 - ((new Date(jan4).getUTCDay()+6)%7))*86400000;
   return 1 + Math.round((thursday - wk1Thursday)/WEEK_MS);
 }
+// Plan date is stored as a plain "YYYY-MM-DD" string (no time, no time zone), so it
+// can never slip a day depending on where the phone is.
+var MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function normPlanDate(v){
+  if(typeof v!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return "";
+  var y = +v.slice(0,4), m = +v.slice(5,7), d = +v.slice(8,10), t = new Date(Date.UTC(y, m-1, d));
+  return (t.getUTCFullYear()===y && t.getUTCMonth()===m-1 && t.getUTCDate()===d) ? v : "";   // rejects 2026-02-31 etc.
+}
+function fmtPlan(v){ return (+v.slice(8,10))+" "+MONTHS_SHORT[+v.slice(5,7)-1]+" "+v.slice(0,4); }
+function todayStr(){
+  var d = new Date(), p = function(n){ return (n<10?"0":"")+n; };
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+}
+function isOverdue(iss){ return !!iss.planDate && iss.status!=="Resolved" && iss.planDate < todayStr(); }
 function ringRadius(n, nodeR, minR){
   if(n<=1) return minR;
   return Math.max(minR, n*(2*nodeR+MARGIN)/(2*Math.PI));
@@ -1289,7 +1314,7 @@ function showDetail(){
   var iss = issues.find(function(i){ return i.id===selectedId; });
   if(!iss){ bar.classList.remove("show"); return; }
   document.getElementById("detailTxt").innerHTML =
-    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+"<br>"+esc(iss.issue);
+    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
   var b1 = document.getElementById("detailToggle"), b2 = document.getElementById("detailToggle2");
   function setBtn(btn, act, label, cls){ btn.textContent = label; btn.setAttribute("data-status-act", act); btn.className = cls; }
   if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
@@ -1366,6 +1391,7 @@ function openAdd(){
   document.getElementById("formTitle").textContent = "Log New Issue";
   document.getElementById("formSite").value = "";
   document.getElementById("formIssue").value = "";
+  document.getElementById("formPlanDate").value = "";
   overlay.classList.add("show");
   setTimeout(function(){ document.getElementById("formSite").focus(); }, 100);
 }
@@ -1376,20 +1402,23 @@ function openEdit(id){
   document.getElementById("formTitle").textContent = "Edit "+id;
   document.getElementById("formSite").value = iss.site;
   document.getElementById("formIssue").value = iss.issue;
+  document.getElementById("formPlanDate").value = iss.planDate || "";
   overlay.classList.add("show");
 }
+document.getElementById("planClear").addEventListener("click", function(){ document.getElementById("formPlanDate").value = ""; });
 document.getElementById("fab").addEventListener("click", openAdd);
 document.getElementById("formCancel").addEventListener("click", function(){ overlay.classList.remove("show"); });
 overlay.addEventListener("click", function(e){ if(e.target===overlay) overlay.classList.remove("show"); });
 document.getElementById("formSave").addEventListener("click", function(){
   var site = document.getElementById("formSite").value.trim().toUpperCase();
   var text = document.getElementById("formIssue").value.trim();
+  var planDate = document.getElementById("formPlanDate").value;
   if(!site || !text){ showToast("Enter both site and issue"); return; }
   if(editingId){
-    updateIssueData(editingId, site, text);
+    updateIssueData(editingId, site, text, planDate);
     showToast(editingId+" updated");
   }else{
-    var iss = addIssue(site, text);
+    var iss = addIssue(site, text, planDate);
     filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search="";
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
@@ -1541,30 +1570,30 @@ function download(filename, blob){
 }
 document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
-  var lines = ["ID,Site,Region,Issue,Status,Logged At"];
+  var lines = ["ID,Site,Region,Issue,Status,Plan Date,Logged At"];
   rows.forEach(function(iss){
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
-    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.status, d];
+    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.status, iss.planDate||"", d];
     lines.push(vals.join(","));
   });
-  download("OPS site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
+  download("site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
   showToast("Exported "+rows.length+" issues to CSV");
 });
 document.getElementById("mBackup").addEventListener("click", function(){
   // Always backs up EVERYTHING, ignoring any active filter/search —
   // a backup should be a full snapshot, not a partial view.
   var payload = {
-    app: "OPS Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
+    app: "Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
-        ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown" };
+        ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "" };
     })
   };
   var stamp = new Date().toISOString().slice(0,10);
   download("site_acceptance_alarmtracking_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
-var ADMIN_NAME = "ZASSSAH";
+var ADMIN_NAME = "ZASSAH";
 function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
@@ -1684,13 +1713,13 @@ function bulkAddIssues(parsed){
   var newIssues = parsed.map(function(p, idx){
     var id = FIREBASE_ENABLED ? nextId() : "ISS-" + String(++localCounter).padStart(4,"0");
     return { id: id, site: p.site, issue: p.issue, status: "Open",
-      ts: now+idx, updated: now+idx, progress: [], owner: p.owner };
+      ts: now+idx, updated: now+idx, progress: [], owner: p.owner, planDate: "" };
   });
   if(FIREBASE_ENABLED){
     var batch = db.batch();
     newIssues.forEach(function(iss){
       var ref = db.collection(COLLECTION).doc(iss.id);
-      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner });
+      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner, planDate:"" });
     });
     batch.commit()
       .then(function(){ showToast("Imported "+newIssues.length+" issues"); })
@@ -1707,7 +1736,7 @@ function restoreIssues(list){
     var batch = db.batch();
     list.forEach(function(r){
       var ref = db.collection(COLLECTION).doc(r.id);
-      batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown" });
+      batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate) });
     });
     batch.commit()
       .then(function(){ showToast("Restored "+list.length+" issues"); })
@@ -1715,7 +1744,7 @@ function restoreIssues(list){
   }else{
     list.forEach(function(r){
       var existing = issues.find(function(i){ return i.id===r.id; });
-      var restored = { id:r.id, site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown" };
+      var restored = { id:r.id, site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate) };
       if(existing){ Object.assign(existing, restored); }
       else{ issues.push(restored); }
     });
@@ -1733,6 +1762,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Status</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Plan Date</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Owner</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Logged At</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Progress Count</Data></Cell>'+
@@ -1753,6 +1783,8 @@ document.getElementById("mExcel").addEventListener("click", function(){
       '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.issue)+'</Data></Cell>'+
       '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(iss.status)+'</Data></Cell>'+
+      (iss.planDate ? '<Cell ss:StyleID="date"><Data ss:Type="DateTime">'+iss.planDate+'T00:00:00.000</Data></Cell>'
+                    : '<Cell><Data ss:Type="String"></Data></Cell>')+
       '<Cell><Data ss:Type="String">'+esc(iss.owner||"Unknown")+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(d)+'</Data></Cell>'+
       '<Cell><Data ss:Type="Number">'+prog.length+'</Data></Cell>'+
@@ -1792,10 +1824,11 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Styles>\n<Style ss:ID="header"><Font ss:Bold="1"/><Interior ss:Color="#DDE3EC" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="open"><Interior ss:Color="#FCE4C4" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="verify"><Interior ss:Color="#D3E3FF" ss:Pattern="Solid"/></Style>\n'+
-    '<Style ss:ID="closed"><Interior ss:Color="#C9F0D8" ss:Pattern="Solid"/></Style>\n</Styles>\n'+
+    '<Style ss:ID="closed"><Interior ss:Color="#C9F0D8" ss:Pattern="Solid"/></Style>\n'+
+    '<Style ss:ID="date"><NumberFormat ss:Format="yyyy-mm-dd"/></Style>\n</Styles>\n'+
     '<Worksheet ss:Name="Site Issues"><Table>\n'+rowsXml.join("\n")+'\n</Table></Worksheet>\n'+
     '<Worksheet ss:Name="Progress History"><Table>\n'+progRowsXml.join("\n")+'\n</Table></Worksheet>\n</Workbook>';
-  download("OPS site_acceptance_alarms.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
+  download("site_acceptance_alarms.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
   showToast("Exported "+rows.length+" issues + "+totalProgressEntries+" progress entries");
 });
 document.getElementById("mSvg").addEventListener("click", function(){
@@ -1911,7 +1944,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. (admin) is always
+// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
@@ -1956,7 +1989,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
       errEl.style.display = "block";
       return;
     }
