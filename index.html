@@ -18,6 +18,7 @@
     --open:#F5A93D; --openFill:rgba(245,169,61,.16);
     --closed:#33D17A; --closedFill:rgba(51,209,122,.16);
     --verify:#6EA8FF; --verifyFill:rgba(110,168,255,.18);
+    --submitted:#C084FC; --submittedFill:rgba(192,132,252,.18);
     --muted:#6B7E98; --text:#E7EEF9; --subtext:#9FB0C8; --inputBg:rgba(255,255,255,.05);
     --danger:#FB6F8D; --shadow:rgba(0,0,0,.55);
     --mono:"SF Mono",Consolas,"Cascadia Code",monospace;
@@ -53,15 +54,20 @@
   .stat{flex:1; text-align:center; border-radius:10px; padding:6px 4px; border:1px solid;
     position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px var(--shadow);}
   .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
-  .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px;}
+  .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px; line-height:1.2;}
   .stat.open{background:var(--openFill); border-color:rgba(245,169,61,.35);}
-  .stat.verification{background:var(--verifyFill); border-color:rgba(110,168,255,.4);}
+  .stat.verify{background:var(--verifyFill); border-color:rgba(110,168,255,.4);}
+  .stat.submitted{background:var(--submittedFill); border-color:rgba(192,132,252,.4);}
   .stat.resolved{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
   .stat.total{background:rgba(55,214,196,.14); border-color:rgba(55,214,196,.35);}
   .stat.open .n{color:var(--open); text-shadow:0 0 12px rgba(245,169,61,.5);}
-  .stat.verification .n{color:var(--verify); text-shadow:0 0 12px rgba(110,168,255,.55);}
+  .stat.verify .n{color:var(--verify); text-shadow:0 0 12px rgba(110,168,255,.55);}
+  .stat.submitted .n{color:var(--submitted); text-shadow:0 0 12px rgba(192,132,252,.55);}
   .stat.resolved .n{color:var(--closed); text-shadow:0 0 12px rgba(51,209,122,.5);}
   .stat.total .n{color:var(--accent); text-shadow:0 0 12px var(--accentGlow);}
+  /* five tiles share one row: tighten the labels on smaller phones (must stay after the rules above) */
+  @media (max-width:400px){ .stat .l{letter-spacing:.4px;} }
+  @media (max-width:340px){ .stat{padding:6px 2px;} .stat .l{letter-spacing:.2px; font-size:7px;} }
 
   /* ---- controls ---- */
   .controls{padding:10px 14px 0; flex-shrink:0; background:var(--panel);
@@ -72,8 +78,8 @@
   select.field{-webkit-appearance:none; appearance:none; color-scheme:dark;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239FB0C8'/></svg>");
     background-repeat:no-repeat; background-position:right 12px center;}
-  .chips{display:flex; gap:6px; margin-bottom:10px;}
-  .chip{flex:1; text-align:center; padding:7px 0; border-radius:20px; font-size:12px; font-weight:700;
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+  .chip{flex:1 1 auto; white-space:nowrap; text-align:center; padding:7px 6px; border-radius:20px; font-size:11px; font-weight:700;
     background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
   .chip.active{background:linear-gradient(180deg, #4EE8D6, var(--accent)); color:#06211D; border-color:var(--accent);
     box-shadow:0 0 0 1px var(--accentGlow), 0 4px 14px var(--accentGlow), inset 0 1px 0 rgba(255,255,255,.4);}
@@ -89,7 +95,8 @@
     border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;
     box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
   .card.open{border-left:3px solid var(--open); box-shadow:inset 3px 0 12px -4px rgba(245,169,61,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
-  .card.verification{border-left:3px solid var(--verify); box-shadow:inset 3px 0 12px -4px rgba(110,168,255,.45), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.verify{border-left:3px solid var(--verify); box-shadow:inset 3px 0 12px -4px rgba(110,168,255,.45), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .card.submitted{border-left:3px solid var(--submitted); box-shadow:inset 3px 0 12px -4px rgba(192,132,252,.45), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
   .card.resolved{border-left:3px solid var(--closed); box-shadow:inset 3px 0 12px -4px rgba(51,209,122,.4), inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
   .region-hdr{display:flex; align-items:center; justify-content:space-between; gap:8px;
     margin:14px 2px 8px; padding:7px 12px; border-radius:10px; border:1px solid var(--border);
@@ -104,7 +111,8 @@
   .card .id{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.4px;}
   .badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 8px; border-radius:20px;}
   .badge.open{background:var(--openFill); color:var(--open); box-shadow:0 0 10px rgba(245,169,61,.25), inset 0 1px 0 rgba(255,255,255,.12);}
-  .badge.verification{background:var(--verifyFill); color:var(--verify); box-shadow:0 0 10px rgba(110,168,255,.3), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.verify{background:var(--verifyFill); color:var(--verify); box-shadow:0 0 10px rgba(110,168,255,.3), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.submitted{background:var(--submittedFill); color:var(--submitted); box-shadow:0 0 10px rgba(192,132,252,.3), inset 0 1px 0 rgba(255,255,255,.12);}
   .badge.resolved{background:var(--closedFill); color:var(--closed); box-shadow:0 0 10px rgba(51,209,122,.25), inset 0 1px 0 rgba(255,255,255,.12);}
   .card .site{font-weight:700; font-size:13px; margin-bottom:3px;}
   .card .desc{font-size:13px; color:var(--subtext); line-height:1.4; margin-bottom:8px;}
@@ -158,6 +166,9 @@
     box-shadow:inset 0 1px 0 var(--borderHi), 0 10px 28px var(--shadow);
     display:none;}
   .detail-bar.show{display:block;}
+  /* while an issue's bar is open on the map, keep the floating + and the zoom buttons off it */
+  body.detail-open #fab{display:none;}
+  body.detail-open .zoom-controls{bottom:150px;}
   .detail-bar .txt{font-size:12px; margin-bottom:8px; line-height:1.4;}
   .detail-bar .actions{display:flex; gap:6px;}
   .detail-bar .actions button{flex:1; padding:8px 0; border-radius:8px; border:1px solid var(--border);
@@ -233,7 +244,8 @@
   </div>
   <div class="stats">
     <div class="stat open"><div class="n" id="statOpen">0</div><div class="l">OPEN</div></div>
-    <div class="stat verification"><div class="n" id="statVerify">0</div><div class="l">VERIFY</div></div>
+    <div class="stat verify"><div class="n" id="statVerify">0</div><div class="l">VERIFY</div></div>
+    <div class="stat submitted"><div class="n" id="statSubmitted">0</div><div class="l">SUBMITTED A85</div></div>
     <div class="stat resolved"><div class="n" id="statResolved">0</div><div class="l">RESOLVED</div></div>
     <div class="stat total"><div class="n" id="statTotal">0</div><div class="l">TOTAL</div></div>
   </div>
@@ -248,7 +260,8 @@
   <div class="chips">
     <div class="chip active" data-filter="All">All</div>
     <div class="chip" data-filter="Open">Open</div>
-    <div class="chip" data-filter="Verification">Verify</div>
+    <div class="chip" data-filter="Verify">Verify</div>
+    <div class="chip" data-filter="Submitted A85">Submitted A85</div>
     <div class="chip" data-filter="Resolved">Resolved</div>
   </div>
   <div class="tabs">
@@ -281,6 +294,7 @@
   <div class="map-legend">
     <span><span class="legend-dot" style="background:var(--openFill);border:1.5px solid var(--open)"></span>Open</span>
     <span><span class="legend-dot" style="background:var(--verifyFill);border:1.5px solid var(--verify)"></span>Verify</span>
+    <span><span class="legend-dot" style="background:var(--submittedFill);border:1.5px solid var(--submitted)"></span>Submitted A85</span>
     <span><span class="legend-dot" style="background:var(--closedFill);border:1.5px solid var(--closed)"></span>Resolved</span>
     <span class="hint">Rings = weeks · drag to move · pinch to zoom</span>
   </div>
@@ -296,7 +310,7 @@
       <button id="detailEdit">EDIT</button>
       <button id="detailProgress">PROGRESS</button>
       <button id="detailToggle">VERIFY</button>
-      <button id="detailToggle2" style="display:none">FAIL</button>
+      <button id="detailToggle2" style="display:none">FAILED</button>
       <button id="detailDel">DELETE</button>
     </div>
   </div>
@@ -367,7 +381,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. admin) can always sign in.
+      Only names added here can sign in to this app. ZASSSAH (admin) can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -388,15 +402,19 @@
 
 // ───────────────────────── constants ─────────────────────────
 var SITE_COLORS = ["#2DD4BF","#A78BFA","#FBBF24","#F472B6","#4ADE80","#38BDF8","#FB923C","#22D3EE"];
-// Workflow:  Open -> Verification -> (pass) Resolved | (fail) back to Open.   Resolved can be reopened.
+// Workflow:  Open -> Verify -> (pass) Submitted A85 -> (pass) Resolved.
+//            A fail at either review stage sends it back to Open.   Resolved can be reopened.
+function statusKey(st){ return st==="Verify" ? "verify" : (st==="Submitted A85" ? "submitted" : (st==="Resolved" ? "resolved" : "open")); }
 var STATUS = {
   Open:         { color:"#F5A93D", fill:"rgba(245,169,61,.22)" },
-  Verification: { color:"#6EA8FF", fill:"rgba(110,168,255,.22)" },
+  Verify:       { color:"#6EA8FF", fill:"rgba(110,168,255,.22)" },
+  "Submitted A85": { color:"#C084FC", fill:"rgba(192,132,252,.22)" },
   Resolved:     { color:"#33D17A", fill:"rgba(51,209,122,.22)" }
 };
-// Issues saved before this step existed use "Closed" — that is the same thing as Resolved.
+// Older saved data: "Closed" is the same thing as Resolved, and "Verification" was the earlier name of Verify.
 function normStatus(st){
   if(st==="Closed") return "Resolved";
+  if(st==="Verification") return "Verify";
   return STATUS[st] ? st : "Open";
 }
 
@@ -582,7 +600,7 @@ function updateIssueData(id, site, text, planDate){
 // Moves an issue from one status to another and logs who did it on its timeline.
 // With shared sync this runs as a transaction that first checks the issue is still
 // in the status this person was looking at, so two people can't both act on the
-// same verification at once.
+// same A85 decision at once.
 function changeStatus(id, from, to, note, doneMsg){
   var now = Date.now();
   var entry = { ts: now, note: note, by: currentUser || "Unknown" };
@@ -613,10 +631,12 @@ function changeStatus(id, from, to, note, doneMsg){
   }
 }
 var STATUS_FLOW = {
-  verify: { from:"Open",         to:"Verification", note:"Sent for verification",          toast:"Sent for verification" },
-  pass:   { from:"Verification", to:"Resolved",     note:"Verification passed → Resolved", toast:"Verification passed — Resolved" },
-  fail:   { from:"Verification", to:"Open",         note:"Verification failed → back to Open", toast:"Verification failed — back to Open" },
-  reopen: { from:"Resolved",     to:"Open",         note:"Reopened",                       toast:"Reopened" }
+  verify: { from:"Open",          to:"Verify",        note:"Sent for verification",             toast:"Sent for verification" },
+  vpass:  { from:"Verify",        to:"Submitted A85", note:"Verify passed → Submitted A85",     toast:"Verify passed — Submitted A85" },
+  vfail:  { from:"Verify",        to:"Open",          note:"Verify failed → back to Open",      toast:"Verify failed — back to Open" },
+  apass:  { from:"Submitted A85", to:"Resolved",      note:"A85 passed → Resolved",             toast:"A85 passed — Resolved" },
+  afail:  { from:"Submitted A85", to:"Open",          note:"A85 failed → back to Open",         toast:"A85 failed — back to Open" },
+  reopen: { from:"Resolved",      to:"Open",          note:"Reopened",                          toast:"Reopened" }
 };
 function doStatusAction(act, id){
   var iss = issues.find(function(i){ return i.id===id; });
@@ -624,9 +644,9 @@ function doStatusAction(act, id){
   if(!iss || !step) return;
   if(iss.status !== step.from){ showToast("Status already changed — refreshed"); refreshAll(false); return; }
   var note = step.note;
-  if(act==="fail"){
-    var reason = prompt("Verification failed — what still needs fixing? (optional)", "");
-    if(reason===null) return;                       // cancelled: leave it in Verification
+  if(act==="vfail" || act==="afail"){
+    var reason = prompt((act==="vfail" ? "Verify" : "A85")+" failed — what still needs fixing? (optional)", "");
+    if(reason===null) return;                       // cancelled: leave it where it is
     reason = reason.trim();
     if(reason) note += ": " + reason;
   }
@@ -682,12 +702,14 @@ function renderList(){
   if(visible.length===0){ el.innerHTML = '<div class="empty-note">No issues match — try clearing filters.</div>'; return; }
   function statusButtonsHtml(iss){
     if(iss.status==="Open") return '<button class="btn-verify" data-status-act="verify">Verify</button>';
-    if(iss.status==="Verification")
-      return '<button class="btn-pass" data-status-act="pass">✓ Pass</button><button class="btn-fail" data-status-act="fail">✕ Fail</button>';
+    if(iss.status==="Verify")
+      return '<button class="btn-pass" data-status-act="vpass">✓ Pass</button><button class="btn-fail" data-status-act="vfail">✕ Failed</button>';
+    if(iss.status==="Submitted A85")
+      return '<button class="btn-pass" data-status-act="apass">✓ Pass</button><button class="btn-fail" data-status-act="afail">✕ Failed</button>';
     return '<button class="btn-reopen" data-status-act="reopen">Reopen</button>';
   }
   function cardHtml(iss){
-    var cls = iss.status.toLowerCase();
+    var cls = statusKey(iss.status);
     var progress = iss.progress || [];
     var timelineHtml = "";
     if(progress.length>0){
@@ -718,12 +740,13 @@ function renderList(){
       return a.site<b.site ? -1 : a.site>b.site ? 1 : b.ts-a.ts;
     });
     var openCount = list.filter(function(i){ return i.status==="Open"; }).length;
-    var verifyCount = list.filter(function(i){ return i.status==="Verification"; }).length;
+    var verifyCount = list.filter(function(i){ return i.status==="Verify"; }).length;
+    var submittedCount = list.filter(function(i){ return i.status==="Submitted A85"; }).length;
     var siteCount = {}; list.forEach(function(i){ siteCount[i.site]=true; });
     return '<div class="region-hdr" style="--rc:'+REGION_COLORS[r]+'">'+
       '<span class="region-name">'+r+'</span>'+
       '<span class="region-meta">'+Object.keys(siteCount).length+' site'+(Object.keys(siteCount).length!==1?'s':'')+
-      ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' to verify' : '')+'</span></div>'+
+      ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' verify' : '')+(submittedCount ? ' · '+submittedCount+' A85' : '')+'</span></div>'+
       list.map(cardHtml).join("");
   }).join("");
   Array.prototype.forEach.call(el.querySelectorAll(".card"), function(card){
@@ -1308,19 +1331,25 @@ function attachDrag(g, kind, key){
     dragState = null;
   });
 }
+function syncDetailOpen(){
+  var shown = document.getElementById("detailBar").classList.contains("show");
+  document.body.classList.toggle("detail-open", shown && view==="map");
+}
 function showDetail(){
   var bar = document.getElementById("detailBar");
-  if(!selectedId){ bar.classList.remove("show"); return; }
+  if(!selectedId){ bar.classList.remove("show"); syncDetailOpen(); return; }
   var iss = issues.find(function(i){ return i.id===selectedId; });
-  if(!iss){ bar.classList.remove("show"); return; }
+  if(!iss){ bar.classList.remove("show"); syncDetailOpen(); return; }
   document.getElementById("detailTxt").innerHTML =
     "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
   var b1 = document.getElementById("detailToggle"), b2 = document.getElementById("detailToggle2");
   function setBtn(btn, act, label, cls){ btn.textContent = label; btn.setAttribute("data-status-act", act); btn.className = cls; }
   if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
-  else if(iss.status==="Verification"){ setBtn(b1,"pass","✓ PASS","btn-pass"); setBtn(b2,"fail","✕ FAIL","btn-fail"); b2.style.display = ""; }
+  else if(iss.status==="Verify"){ setBtn(b1,"vpass","✓ PASS","btn-pass"); setBtn(b2,"vfail","✕ FAILED","btn-fail"); b2.style.display = ""; }
+  else if(iss.status==="Submitted A85"){ setBtn(b1,"apass","✓ PASS","btn-pass"); setBtn(b2,"afail","✕ FAILED","btn-fail"); b2.style.display = ""; }
   else { setBtn(b1,"reopen","REOPEN","btn-reopen"); b2.style.display = "none"; }
   bar.classList.add("show");
+  syncDetailOpen();
 }
 document.getElementById("detailEdit").addEventListener("click", function(){ if(selectedId) openEdit(selectedId); });
 ["detailToggle","detailToggle2"].forEach(function(bid){
@@ -1550,6 +1579,7 @@ Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(x){ x.classList.toggle("active", x===t); });
     document.getElementById("listView").style.display = view==="list" ? "block" : "none";
     document.getElementById("mapView").style.display = view==="map" ? "block" : "none";
+    syncDetailOpen();
     if(view==="map") fitToScreen();
   });
 });
@@ -1770,7 +1800,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update By</Data></Cell></Row>'];
   rows.forEach(function(iss){
-    var style = iss.status==="Open" ? "open" : (iss.status==="Verification" ? "verify" : "closed");
+    var style = iss.status==="Open" ? "open" : (iss.status==="Verify" ? "verify" : (iss.status==="Submitted A85" ? "submitted" : "closed"));
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     var latest = prog.length>0 ? prog[prog.length-1] : null;   // most recent timeline entry
@@ -1824,6 +1854,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Styles>\n<Style ss:ID="header"><Font ss:Bold="1"/><Interior ss:Color="#DDE3EC" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="open"><Interior ss:Color="#FCE4C4" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="verify"><Interior ss:Color="#D3E3FF" ss:Pattern="Solid"/></Style>\n'+
+    '<Style ss:ID="submitted"><Interior ss:Color="#E9D8FF" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="closed"><Interior ss:Color="#C9F0D8" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="date"><NumberFormat ss:Format="yyyy-mm-dd"/></Style>\n</Styles>\n'+
     '<Worksheet ss:Name="Site Issues"><Table>\n'+rowsXml.join("\n")+'\n</Table></Worksheet>\n'+
@@ -1911,10 +1942,12 @@ function refreshSiteSelect(){
 }
 function refreshStats(){
   var open = issues.filter(function(i){return i.status==="Open";}).length;
-  var verifying = issues.filter(function(i){return i.status==="Verification";}).length;
+  var verifying = issues.filter(function(i){return i.status==="Verify";}).length;
+  var submitted = issues.filter(function(i){return i.status==="Submitted A85";}).length;
   var resolved = issues.filter(function(i){return i.status==="Resolved";}).length;
   document.getElementById("statOpen").textContent = open;
   document.getElementById("statVerify").textContent = verifying;
+  document.getElementById("statSubmitted").textContent = submitted;
   document.getElementById("statResolved").textContent = resolved;
   document.getElementById("statTotal").textContent = issues.length;
 }
