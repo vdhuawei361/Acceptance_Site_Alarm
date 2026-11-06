@@ -255,6 +255,17 @@
     border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
   .sheet textarea{resize:vertical; min-height:70px;}
+  .seg{display:flex; gap:8px;}
+  .seg-btn{flex:1; padding:12px 8px; border-radius:10px; border:1px solid var(--border); background:var(--inputBg); color:var(--subtext);
+    font-size:13px; font-weight:700; box-shadow:inset 0 1px 3px rgba(0,0,0,.25);}
+  .seg-btn.active[data-cat="Ticket Request"]{color:#5EEAD4; border-color:rgba(94,234,212,.7); background:rgba(94,234,212,.12); box-shadow:0 0 14px rgba(94,234,212,.25);}
+  .seg-btn.active[data-cat="Fix Request"]{color:#F0ABFC; border-color:rgba(240,171,252,.7); background:rgba(240,171,252,.12); box-shadow:0 0 14px rgba(240,171,252,.25);}
+  .seg.invalid .seg-btn{border-color:var(--danger);}
+  .cat-tag{flex:0 0 auto; margin-right:6px; padding:1px 6px; border-radius:10px; font-size:8px; font-weight:800; letter-spacing:.6px; line-height:1.4; border:1px solid;}
+  .cat-tag.ticket{color:#5EEAD4; border-color:rgba(94,234,212,.45); background:rgba(94,234,212,.10);}
+  .cat-tag.fix{color:#F0ABFC; border-color:rgba(240,171,252,.45); background:rgba(240,171,252,.10);}
+  .cat-tag .short{display:none;}
+  @media (max-width:420px){ .cat-tag .full{display:none;} .cat-tag .short{display:inline;} }
   .plan-row{display:flex; justify-content:space-between; align-items:flex-end;}
   .plan-row label{margin-bottom:4px;}
   #planClear{background:none; border:none; color:var(--accent); font-size:11px; font-weight:700; padding:4px 0;}
@@ -461,6 +472,11 @@
     <textarea id="formIssue" placeholder="Describe the fault or problem…"></textarea>
     <div class="plan-row"><label>PLAN DATE</label><button type="button" id="planClear">Clear</button></div>
     <input type="date" id="formPlanDate">
+    <label>CATEGORY</label>
+    <div class="seg" id="formCategory">
+      <button type="button" class="seg-btn" data-cat="Ticket Request">Ticket Request</button>
+      <button type="button" class="seg-btn" data-cat="Fix Request">Fix Request</button>
+    </div>
     <div class="btnrow">
       <button class="btn-cancel" id="formCancel">Cancel</button>
       <button class="btn-save" id="formSave">Save</button>
@@ -615,7 +631,7 @@ function loadAll(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     issues = raw ? JSON.parse(raw) : null;
-    if(issues) issues.forEach(function(i){ i.status = normStatus(i.status); i.planDate = normPlanDate(i.planDate); });
+    if(issues) issues.forEach(function(i){ i.status = normStatus(i.status); i.planDate = normPlanDate(i.planDate); i.category = normCategory(i.category); });
   }catch(e){ issues = null; }
   if(!issues){
     var now = Date.now();
@@ -634,7 +650,7 @@ function initFirestoreSync(){
     issues = [];
     snapshot.forEach(function(doc){
       var d = doc.data();
-      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown", planDate: normPlanDate(d.planDate) });
+      issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown", planDate: normPlanDate(d.planDate), category: normCategory(d.category) });
     });
     // Don't auto-refit the map on every remote change — that would yank
     // your zoom/pan out from under you mid-edit. Use the Fit button if needed.
@@ -670,13 +686,13 @@ function mkIssue(site, text, status, ts){
 }
 
 // ───────────────────────── data ops ─────────────────────────
-function addIssue(site, text, planDate){
+function addIssue(site, text, planDate, category){
   var now = Date.now();
   var owner = currentUser || "Unknown";
   var iss = { id: nextId(), site: site, issue: text, status: "Open", ts: now, updated: now, progress: [], owner: owner,
-              planDate: normPlanDate(planDate) };
+              planDate: normPlanDate(planDate), category: normCategory(category) };
   if(FIREBASE_ENABLED){
-    db.collection(COLLECTION).doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner, planDate: iss.planDate })
+    db.collection(COLLECTION).doc(iss.id).set({ site: iss.site, issue: iss.issue, status: iss.status, ts: iss.ts, updated: iss.updated, progress: [], owner: owner, planDate: iss.planDate, category: iss.category })
       .catch(function(err){ console.error(err); showToast("Could not save — check connection"); });
     // local `issues` array updates itself via the onSnapshot listener
   }else{
@@ -703,17 +719,18 @@ function addProgressNote(id, note){
     refreshAll(false);
   }
 }
-function updateIssueData(id, site, text, planDate){
+function updateIssueData(id, site, text, planDate, category){
   var now = Date.now();
   planDate = normPlanDate(planDate);
+  category = normCategory(category);
   if(FIREBASE_ENABLED){
-    db.collection(COLLECTION).doc(id).update({ site: site, issue: text, planDate: planDate, updated: now })
+    db.collection(COLLECTION).doc(id).update({ site: site, issue: text, planDate: planDate, category: category, updated: now })
       .catch(function(err){ console.error(err); showToast("Could not update — check connection"); });
     return true;
   }
   var iss = issues.find(function(i){ return i.id===id; });
   if(!iss) return false;
-  iss.site = site; iss.issue = text; iss.planDate = planDate; iss.updated = now;
+  iss.site = site; iss.issue = text; iss.planDate = planDate; iss.category = category; iss.updated = now;
   saveIssues();
   return true;
 }
@@ -836,8 +853,8 @@ function renderList(){
       return '<button class="btn-pass" data-status-act="apass">✓ Pass</button><button class="btn-fail" data-status-act="afail">✕ Failed</button>';
     return '<button class="btn-reopen" data-status-act="reopen">Reopen</button>';
   }
-  function field(cls, text, none, title){
-    return '<div class="f '+cls+'"'+(title ? ' title="'+esc(title)+'"' : '')+'><span class="val'+(none ? ' none' : '')+'">'+text+'</span></div>';
+  function field(cls, text, none, title, pre){
+    return '<div class="f '+cls+'"'+(title ? ' title="'+esc(title)+'"' : '')+'>'+(pre||'')+'<span class="val'+(none ? ' none' : '')+'">'+text+'</span></div>';
   }
   function badgeHtml(iss, cls){
     var full = iss.status.toUpperCase(), short = iss.status==="Submitted A85" ? "A85" : full;
@@ -849,7 +866,7 @@ function renderList(){
       return '<div class="tl-item"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
     }).join("") + '</div>' : '';
     return '<div class="irow-details">'+
-      '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+'</div>'+
+      '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+(iss.category ? ' · '+esc(iss.category) : '')+'</div>'+
       '<div class="full">'+esc(iss.issue)+'</div>'+tl+'</div>';
   }
   function rowHtml(iss){
@@ -864,7 +881,7 @@ function renderList(){
       '<div class="irow-grid">'+
         '<div class="irow-l2">'+
           '<div class="f f-id" title="Issue ID">'+esc(iss.id)+'</div>'+
-          field("f-desc", esc(iss.issue), false, iss.issue)+
+          field("f-desc", esc(iss.issue), false, iss.issue, catTagHtml(iss.category))+
           '<button class="f-del" data-act="del" title="Delete">'+TRASH_SVG+'</button>'+
         '</div>'+
         '<div class="irow-l3">'+
@@ -955,6 +972,19 @@ function normPlanDate(v){
   if(typeof v!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return "";
   var y = +v.slice(0,4), m = +v.slice(5,7), d = +v.slice(8,10), t = new Date(Date.UTC(y, m-1, d));
   return (t.getUTCFullYear()===y && t.getUTCMonth()===m-1 && t.getUTCDate()===d) ? v : "";   // rejects 2026-02-31 etc.
+}
+var CATEGORIES = ["Ticket Request", "Fix Request"];
+function normCategory(v){
+  if(typeof v!=="string") return "";
+  var t = v.trim().toLowerCase();
+  if(t==="ticket request" || t==="ticket") return "Ticket Request";
+  if(t==="fix request" || t==="fix") return "Fix Request";
+  return "";
+}
+function catTagHtml(cat){
+  if(!cat) return "";
+  var key = cat==="Ticket Request" ? "ticket" : "fix";
+  return '<span class="cat-tag '+key+'" title="Category: '+cat+'"><span class="full">'+cat.toUpperCase()+'</span><span class="short">'+(key==="ticket" ? "TICKET" : "FIX")+'</span></span>';
 }
 function fmtPlan(v){ return (+v.slice(8,10))+" "+MONTHS_SHORT[+v.slice(5,7)-1]+" "+v.slice(0,4); }
 function todayStr(){
@@ -1723,7 +1753,7 @@ function showDetail(){
   var iss = issues.find(function(i){ return i.id===selectedId; });
   if(!iss){ bar.classList.remove("show"); syncDetailOpen(); return; }
   document.getElementById("detailTxt").innerHTML =
-    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
+    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.category ? " · "+esc(iss.category) : "")+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
   var b1 = document.getElementById("detailToggle"), b2 = document.getElementById("detailToggle2");
   function setBtn(btn, act, label, cls){ btn.textContent = label; btn.setAttribute("data-status-act", act); btn.className = cls; }
   if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
@@ -1797,12 +1827,22 @@ window.addEventListener("resize", function(){ if(view==="map") renderMap(); });
 
 // ───────────────────────── form (add / edit) ─────────────────────────
 var overlay = document.getElementById("formOverlay");
+var formCategory = "";
+function setFormCategory(v){
+  formCategory = v;
+  Array.prototype.forEach.call(document.querySelectorAll("#formCategory .seg-btn"), function(b){ b.classList.toggle("active", b.getAttribute("data-cat")===v); });
+  document.getElementById("formCategory").classList.remove("invalid");
+}
+Array.prototype.forEach.call(document.querySelectorAll("#formCategory .seg-btn"), function(b){
+  b.addEventListener("click", function(){ setFormCategory(b.getAttribute("data-cat")); });
+});
 function openAdd(){
   editingId = null;
   document.getElementById("formTitle").textContent = "Log New Issue";
   document.getElementById("formSite").value = "";
   document.getElementById("formIssue").value = "";
   document.getElementById("formPlanDate").value = "";
+  setFormCategory("");
   overlay.classList.add("show");
   setTimeout(function(){ document.getElementById("formSite").focus(); }, 100);
 }
@@ -1814,6 +1854,7 @@ function openEdit(id){
   document.getElementById("formSite").value = iss.site;
   document.getElementById("formIssue").value = iss.issue;
   document.getElementById("formPlanDate").value = iss.planDate || "";
+  setFormCategory(iss.category || "");
   overlay.classList.add("show");
 }
 document.getElementById("planClear").addEventListener("click", function(){ document.getElementById("formPlanDate").value = ""; });
@@ -1825,11 +1866,17 @@ document.getElementById("formSave").addEventListener("click", function(){
   var text = document.getElementById("formIssue").value.trim();
   var planDate = document.getElementById("formPlanDate").value;
   if(!site || !text){ showToast("Enter both site and issue"); return; }
+  // every NEW issue must be classified; older issues without a category can still be edited without picking one
+  if(!editingId && !formCategory){
+    document.getElementById("formCategory").classList.add("invalid");
+    showToast("Choose a category: Ticket Request or Fix Request");
+    return;
+  }
   if(editingId){
-    updateIssueData(editingId, site, text, planDate);
+    updateIssueData(editingId, site, text, planDate, formCategory);
     showToast(editingId+" updated");
   }else{
-    var iss = addIssue(site, text, planDate);
+    var iss = addIssue(site, text, planDate, formCategory);
     filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" };
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
@@ -1984,10 +2031,10 @@ function download(filename, blob){
 }
 document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
-  var lines = ["ID,Site,Region,Issue,Status,Plan Date,Logged At"];
+  var lines = ["ID,Site,Region,Issue,Category,Status,Plan Date,Logged At"];
   rows.forEach(function(iss){
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
-    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.status, iss.planDate||"", d];
+    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", iss.status, iss.planDate||"", d];
     lines.push(vals.join(","));
   });
   download("site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
@@ -2000,7 +2047,7 @@ document.getElementById("mBackup").addEventListener("click", function(){
     app: "Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
-        ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "" };
+        ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "", category: iss.category || "" };
     })
   };
   var stamp = new Date().toISOString().slice(0,10);
@@ -2012,7 +2059,7 @@ function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
 document.getElementById("mRestore").addEventListener("click", function(){
-  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can restore from backup"); return; }
+  if(!isAdmin()){ showToast("Only admin can restore from backup"); return; }
   document.getElementById("restoreFileInput").click();
 });
 document.getElementById("restoreFileInput").addEventListener("change", function(e){
@@ -2072,17 +2119,20 @@ document.getElementById("importExcelInput").addEventListener("change", function(
     if(!rows || rows.length<2){ showToast("No data rows found in the file"); return; }
 
     var headers = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
-    function findCol(keywords){
+    function findCol(keywords, skip){
       for(var i=0;i<headers.length;i++){
+        if(skip && skip.indexOf(i)!==-1) continue;
         for(var k=0;k<keywords.length;k++){
           if(headers[i].indexOf(keywords[k]) !== -1) return i;
         }
       }
       return -1;
     }
-    var siteCol = findCol(["site"]);
-    var issueCol = findCol(["issue", "description"]);
-    var userCol = findCol(["username", "user", "owner"]);
+    var catCol = findCol(["categor"]);                       // optional; found first so "Issue Category" is never mistaken for the description
+    var skip = catCol===-1 ? [] : [catCol];
+    var siteCol = findCol(["site"], skip);
+    var issueCol = findCol(["issue", "description"], skip);
+    var userCol = findCol(["username", "user", "owner"], skip);
 
     if(siteCol===-1 || issueCol===-1 || userCol===-1){
       showToast("File must have columns: Site ID, Issue Description, Username");
@@ -2095,12 +2145,18 @@ document.getElementById("importExcelInput").addEventListener("change", function(
       var site = String(row[siteCol]||"").trim();
       var issueText = String(row[issueCol]||"").trim();
       var owner = String(row[userCol]||"").trim();
+      var catRaw = catCol===-1 ? "" : String(row[catCol]||"").trim();
+      var category = normCategory(catRaw);
       if(!site && !issueText) continue; // skip fully blank rows
       if(!site || !issueText){
         showToast("Row "+(r+1)+" is missing Site ID or Issue Description — import stopped");
         return;
       }
-      parsed.push({ site: site.toUpperCase(), issue: issueText, owner: owner || (currentUser||"Unknown") });
+      if(catRaw && !category){
+        showToast("Row "+(r+1)+": category must be Ticket Request or Fix Request — import stopped");
+        return;
+      }
+      parsed.push({ site: site.toUpperCase(), issue: issueText, owner: owner || (currentUser||"Unknown"), category: category });
     }
     if(parsed.length===0){ showToast("No valid rows found to import"); return; }
 
@@ -2127,13 +2183,13 @@ function bulkAddIssues(parsed){
   var newIssues = parsed.map(function(p, idx){
     var id = FIREBASE_ENABLED ? nextId() : "ISS-" + String(++localCounter).padStart(4,"0");
     return { id: id, site: p.site, issue: p.issue, status: "Open",
-      ts: now+idx, updated: now+idx, progress: [], owner: p.owner, planDate: "" };
+      ts: now+idx, updated: now+idx, progress: [], owner: p.owner, planDate: "", category: p.category || "" };
   });
   if(FIREBASE_ENABLED){
     var batch = db.batch();
     newIssues.forEach(function(iss){
       var ref = db.collection(COLLECTION).doc(iss.id);
-      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner, planDate:"" });
+      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner, planDate:"", category:iss.category });
     });
     batch.commit()
       .then(function(){ showToast("Imported "+newIssues.length+" issues"); })
@@ -2150,7 +2206,7 @@ function restoreIssues(list){
     var batch = db.batch();
     list.forEach(function(r){
       var ref = db.collection(COLLECTION).doc(r.id);
-      batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate) });
+      batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate), category:normCategory(r.category) });
     });
     batch.commit()
       .then(function(){ showToast("Restored "+list.length+" issues"); })
@@ -2158,7 +2214,7 @@ function restoreIssues(list){
   }else{
     list.forEach(function(r){
       var existing = issues.find(function(i){ return i.id===r.id; });
-      var restored = { id:r.id, site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate) };
+      var restored = { id:r.id, site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate), category:normCategory(r.category) };
       if(existing){ Object.assign(existing, restored); }
       else{ issues.push(restored); }
     });
@@ -2175,6 +2231,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Site</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Category</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Status</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Plan Date</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Owner</Data></Cell>'+
@@ -2196,6 +2253,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
       '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.issue)+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(iss.category||"")+'</Data></Cell>'+
       '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(iss.status)+'</Data></Cell>'+
       (iss.planDate ? '<Cell ss:StyleID="date"><Data ss:Type="DateTime">'+iss.planDate+'T00:00:00.000</Data></Cell>'
                     : '<Cell><Data ss:Type="String"></Data></Cell>')+
@@ -2363,7 +2421,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
+// Checks whether `name` is allowed to sign in. ZASSSAH (admin) is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
@@ -2408,7 +2466,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
       errEl.style.display = "block";
       return;
     }
