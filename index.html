@@ -116,7 +116,13 @@
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);
     font-weight:800; font-size:12px; letter-spacing:.3px; overflow-wrap:anywhere; color:var(--text);}
-  .site-name{position:sticky; top:14px;}      /* stays in view while you scroll through this site's issues */
+  .site-name{position:sticky; top:14px; display:flex; flex-direction:column; align-items:center; gap:7px;}   /* stays in view while you scroll through this site's issues */
+  .site-resolve{padding:4px 6px; border-radius:9px; border:1px solid rgba(51,209,122,.55); background:rgba(51,209,122,.12); color:var(--closed);
+    font-size:9px; font-weight:800; letter-spacing:.2px; line-height:1.2; box-shadow:0 0 10px rgba(51,209,122,.18);}
+  .sr-summary{font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;}
+  .sr-summary b{color:var(--closed);} .sr-summary .sr-counts{color:var(--subtext); font-size:12px;}
+  .sr-warn{font-size:11px; line-height:1.45; color:var(--open); background:rgba(245,169,61,.10); border:1px solid rgba(245,169,61,.35); border-radius:10px; padding:8px 10px; margin:2px 0 4px;}
+  .sr-warn.hidden-note{color:var(--subtext); background:var(--inputBg); border-color:var(--border);}
   .site-rows{flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;}
   .irow{padding:5px 8px 7px; border-radius:12px; border:1px solid var(--border); border-left:3px solid var(--open);
     background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);
@@ -163,6 +169,7 @@
   }
   @media (min-width:720px){                                           /* wide: ID | Description | Last update note | by | Plan Date | trash, all on one line */
     .site-box{flex-basis:150px; font-size:19px; border-radius:22px; align-items:center; padding:8px 4px;}
+    .site-resolve{font-size:11px; padding:5px 12px;}
     .irow-grid{flex-direction:row; align-items:stretch;}
     .irow-l2, .irow-l3{display:contents;}
     .f-id{order:1; flex:0 0 100px;} .f-desc{order:2; flex:1.1 1 0;} .f-note{order:3; flex:2.2 1 0;}
@@ -255,6 +262,13 @@
     border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
   .sheet textarea{resize:vertical; min-height:70px;}
+  .cchips{margin:-2px 0 10px;}
+  .cchip{flex:1 1 auto; white-space:nowrap; text-align:center; padding:5px 6px; border-radius:20px; font-size:10.5px; font-weight:700;
+    background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
+  .cchip.active{background:rgba(55,214,196,.16); color:var(--accent); border-color:rgba(55,214,196,.55);}
+  .cchip.active[data-cat-filter="Ticket Request"]{background:rgba(94,234,212,.14); color:#5EEAD4; border-color:rgba(94,234,212,.6);}
+  .cchip.active[data-cat-filter="Fix Request"]{background:rgba(240,171,252,.14); color:#F0ABFC; border-color:rgba(240,171,252,.6);}
+  .cchip.active[data-cat-filter="Not set"]{background:rgba(159,176,200,.14); color:var(--subtext); border-color:rgba(159,176,200,.5);}
   .seg{display:flex; gap:8px;}
   .seg-btn{flex:1; padding:12px 8px; border-radius:10px; border:1px solid var(--border); background:var(--inputBg); color:var(--subtext);
     font-size:13px; font-weight:700; box-shadow:inset 0 1px 3px rgba(0,0,0,.25);}
@@ -366,6 +380,12 @@
     <div class="chip" data-filter="Submitted A85">Submitted A85</div>
     <div class="chip" data-filter="Resolved">Resolved</div>
   </div>
+  <div class="chips cchips" id="catChips">
+    <div class="cchip active" data-cat-filter="Any">Any</div>
+    <div class="cchip" data-cat-filter="Ticket Request">Ticket Request</div>
+    <div class="cchip" data-cat-filter="Fix Request">Fix Request</div>
+    <div class="cchip" data-cat-filter="Not set">Not set</div>
+  </div>
   <div class="plan-badge" id="planBadge"><span id="planBadgeText"></span><button id="planBadgeClear" title="Clear plan date filter">✕</button></div>
   <div class="tabs">
     <div class="tab active" data-view="list">List</div>
@@ -450,7 +470,8 @@
 <button id="fab">+</button>
 
 <div class="menu" id="exportMenu">
-  <button id="mImportExcel">Import from Excel...</button>
+  <button id="mImportExcel">Import from Excel / CSV...</button>
+  <button id="mTemplate">Download import template (.csv)</button>
   <button id="mCsv">Export CSV</button>
   <button id="mExcel">Export Excel (.xls)</button>
   <button id="mBackup">Backup All Data (JSON)</button>
@@ -480,6 +501,21 @@
     <div class="btnrow">
       <button class="btn-cancel" id="formCancel">Cancel</button>
       <button class="btn-save" id="formSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="siteResolveOverlay">
+  <div class="sheet">
+    <h3 id="srTitle">Resolve all issues</h3>
+    <div class="sr-summary" id="srSummary"></div>
+    <label>NOTE — ADDED TO EACH ISSUE'S PROGRESS</label>
+    <textarea id="srNote" placeholder="e.g. Replaced rectifier module, all alarms cleared"></textarea>
+    <div class="sr-warn" id="srWarn"></div>
+    <div class="sr-warn hidden-note" id="srHidden" style="display:none"></div>
+    <div class="btnrow">
+      <button class="btn-cancel" id="srCancel">Cancel</button>
+      <button class="btn-save" id="srSave">Resolve</button>
     </div>
   </div>
 </div>
@@ -517,7 +553,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. ZASSSAH (admin) can always sign in.
+      Only names added here can sign in to this app. ZASSSAH (Sadmin) can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -606,7 +642,7 @@ if(FIREBASE_ENABLED){
 // ───────────────────────── state ─────────────────────────
 var issues = [];
 var nodePositions = {};   // "site:NAME" or "issue:ID" -> {x,y} — always local to this device
-var filter = "All", siteFilter = "All Sites", regionFilter = "All Regions", search = "";
+var filter = "All", siteFilter = "All Sites", regionFilter = "All Regions", categoryFilter = "Any", search = "";
 var selectedId = null;
 var view = "list";
 var zoom = 1, panX = 0, panY = 0;
@@ -809,6 +845,10 @@ function getSiteList(){
 function getVisible(ignorePlan){
   return issues.filter(function(i){
     if(!ignorePlan && !planMatch(i)) return false;
+    if(categoryFilter!=="Any"){
+      var cat = i.category || "";
+      if(categoryFilter==="Not set" ? cat!=="" : cat!==categoryFilter) return false;
+    }
     if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return false;
     if(siteFilter!=="All Sites" && i.site!==siteFilter) return false;
     if(filter!=="All" && i.status!==filter) return false;
@@ -899,7 +939,10 @@ function renderList(){
       var sa = STAGE_ORDER.indexOf(a.status), sb = STAGE_ORDER.indexOf(b.status);
       return sa!==sb ? sa-sb : b.ts-a.ts;                       // Open first, Resolved last; newest first within a stage
     });
-    return '<div class="site-block" style="--rc:'+rc+'"><div class="site-box"><span class="site-name">'+esc(site)+'</span></div>'+
+    var unresolved = list.filter(function(i){ return i.status!=="Resolved"; }).length;
+    var resolveBtn = unresolved
+      ? '<button class="site-resolve" data-resolve-site="'+esc(site)+'" title="Resolve all '+unresolved+' unresolved issue'+(unresolved!==1?'s':'')+' of this site">✓ Resolve all</button>' : '';
+    return '<div class="site-block" style="--rc:'+rc+'"><div class="site-box"><span class="site-name"><span class="site-label">'+esc(site)+'</span>'+resolveBtn+'</span></div>'+
       '<div class="site-rows">'+list.map(rowHtml).join("")+'</div></div>';
   }
   var groups = {};
@@ -918,6 +961,9 @@ function renderList(){
       ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' verify' : '')+(submittedCount ? ' · '+submittedCount+' A85' : '')+'</span></div>'+
       sites.map(function(site){ return siteBlock(site, bySite[site], REGION_COLORS[r]); }).join("");
   }).join("") + '</div>';
+  Array.prototype.forEach.call(el.querySelectorAll(".site-resolve"), function(btn){
+    btn.addEventListener("click", function(){ openSiteResolve(btn.getAttribute("data-resolve-site")); });
+  });
   Array.prototype.forEach.call(el.querySelectorAll(".irow"), function(row){
     var id = row.getAttribute("data-id");
     row.querySelector('[data-act="edit"]').addEventListener("click", function(){ openEdit(id); });
@@ -1877,7 +1923,7 @@ document.getElementById("formSave").addEventListener("click", function(){
     showToast(editingId+" updated");
   }else{
     var iss = addIssue(site, text, planDate, formCategory);
-    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" };
+    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" }; setCategoryFilter("Any");
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
     setActiveChip("All");
@@ -2059,7 +2105,7 @@ function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
 document.getElementById("mRestore").addEventListener("click", function(){
-  if(!isAdmin()){ showToast("Only admin can restore from backup"); return; }
+  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can restore from backup"); return; }
   document.getElementById("restoreFileInput").click();
 });
 document.getElementById("restoreFileInput").addEventListener("change", function(e){
@@ -2096,6 +2142,40 @@ document.getElementById("restoreFileInput").addEventListener("change", function(
   };
   reader.readAsText(file);
 });
+// A small CSV reader: quoted fields (commas, line breaks and "" inside quotes), CRLF/LF, a UTF-8 BOM,
+// and comma / semicolon / tab separators (Excel uses ; in some regions). It is used for .csv files so
+// they import even if the Excel-reading library can't load.
+function parseCsv(text){
+  if(text.charCodeAt(0)===0xFEFF) text = text.slice(1);
+  var first = text.split(/\r?\n/, 1)[0], counts = { ",":0, ";":0, "\t":0 }, delim = ",";
+  Object.keys(counts).forEach(function(d){ counts[d] = first.split(d).length - 1; });
+  Object.keys(counts).forEach(function(d){ if(counts[d] > counts[delim]) delim = d; });
+  var rows = [], row = [], cur = "", inQ = false;
+  for(var i=0; i<text.length; i++){
+    var ch = text.charAt(i);
+    if(inQ){
+      if(ch==='"'){ if(text.charAt(i+1)==='"'){ cur += '"'; i++; } else inQ = false; }
+      else cur += ch;
+    }else if(ch==='"' && cur===""){ inQ = true; }               // a quote only opens a quoted field at the start of a field
+    else if(ch===delim){ row.push(cur); cur = ""; }
+    else if(ch==="\n" || ch==="\r"){
+      if(ch==="\r" && text.charAt(i+1)==="\n") i++;
+      row.push(cur); cur = ""; rows.push(row); row = [];
+    }else cur += ch;
+  }
+  if(cur!=="" || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+document.getElementById("mTemplate").addEventListener("click", function(){
+  var lines = [
+    "Site ID,Issue Description,Username,Category",
+    "BKA0456,EXAMPLE - delete this row,Alice,Ticket Request",
+    "BKA0457,EXAMPLE - delete this row,Bob,Fix Request"
+  ];
+  // the BOM makes Excel open it as UTF-8, so any language displays correctly
+  download("import_template.csv", new Blob(["\uFEFF"+lines.join("\r\n")+"\r\n"], {type:"text/csv"}));
+  showToast("Template saved — Category must be Ticket Request or Fix Request");
+});
 document.getElementById("mImportExcel").addEventListener("click", function(){
   document.getElementById("importExcelInput").click();
 });
@@ -2106,14 +2186,25 @@ document.getElementById("importExcelInput").addEventListener("change", function(
   var reader = new FileReader();
   reader.onload = function(evt){
     var rows;
+    var isCsv = /\.csv$/i.test(file.name) || file.type==="text/csv";
     try{
-      var data = new Uint8Array(evt.target.result);
-      var wb = XLSX.read(data, {type:"array"});
-      var firstSheet = wb.Sheets[wb.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(firstSheet, {header:1, defval:""});
+      if(isCsv){
+        var text;
+        try{ text = new TextDecoder("utf-8", {fatal:true}).decode(new Uint8Array(evt.target.result)); }
+        catch(e1){ throw new Error("encoding"); }
+        rows = parseCsv(text);
+      }else{
+        if(typeof XLSX==="undefined") throw new Error("noreader");
+        var data = new Uint8Array(evt.target.result);
+        var wb = XLSX.read(data, {type:"array"});
+        var firstSheet = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(firstSheet, {header:1, defval:""});
+      }
     }catch(err){
       console.error(err);
-      showToast("Could not read that file — make sure it's a valid Excel file");
+      if(err && err.message==="encoding") showToast("That CSV isn't UTF-8 — in Excel use Save As → CSV UTF-8, or save as .xlsx");
+      else if(err && err.message==="noreader") showToast("The Excel reader couldn't load (no internet?) — save the file as CSV UTF-8 and import that");
+      else showToast("Could not read that file — make sure it's a valid Excel or CSV file");
       return;
     }
     if(!rows || rows.length<2){ showToast("No data rows found in the file"); return; }
@@ -2135,7 +2226,7 @@ document.getElementById("importExcelInput").addEventListener("change", function(
     var userCol = findCol(["username", "user", "owner"], skip);
 
     if(siteCol===-1 || issueCol===-1 || userCol===-1){
-      showToast("File must have columns: Site ID, Issue Description, Username");
+      showToast("File must have columns: Site ID, Issue Description, Username (and optionally Category)");
       return;
     }
 
@@ -2148,6 +2239,7 @@ document.getElementById("importExcelInput").addEventListener("change", function(
       var catRaw = catCol===-1 ? "" : String(row[catCol]||"").trim();
       var category = normCategory(catRaw);
       if(!site && !issueText) continue; // skip fully blank rows
+      if(/^example\s*-\s*delete this row/i.test(issueText)) continue;   // the sample rows from the template
       if(!site || !issueText){
         showToast("Row "+(r+1)+" is missing Site ID or Issue Description — import stopped");
         return;
@@ -2160,15 +2252,32 @@ document.getElementById("importExcelInput").addEventListener("change", function(
     }
     if(parsed.length===0){ showToast("No valid rows found to import"); return; }
 
+    var nTicket = parsed.filter(function(x){ return x.category==="Ticket Request"; }).length;
+    var nFix = parsed.filter(function(x){ return x.category==="Fix Request"; }).length;
+    var nNone = parsed.length - nTicket - nFix;
     var ok = confirm(
-      "Import "+parsed.length+" new issue"+(parsed.length!==1?"s":"")+" from this Excel file?\n\n"+
-      "Each becomes a new Open issue, attributed to the Username column (or you, where left blank)."
+      "Import "+parsed.length+" new issue"+(parsed.length!==1?"s":"")+" from this file?\n\n"+
+      "Category:  "+nTicket+" Ticket Request,  "+nFix+" Fix Request"+(nNone ? ",  "+nNone+" with NO category" : "")+"\n"+
+      (catCol===-1 ? "(No Category column found — add one to classify them on import.)\n" : "")+
+      (nNone && catCol!==-1 ? "(Blank categories can be set later with Edit.)\n" : "")+
+      "\nEach becomes a new Open issue, attributed to the Username column (or you, where left blank)."
     );
     if(!ok) return;
     bulkAddIssues(parsed);
   };
   reader.readAsArrayBuffer(file);
 });
+// Firestore rejects a batch of more than 500 writes, so big imports / restores are sent in chunks of 400.
+// Resolves with how many were actually written (chunks that fail are counted as 0).
+function commitInBatches(entries){
+  var SIZE = 400, chunks = [];
+  for(var i=0; i<entries.length; i+=SIZE) chunks.push(entries.slice(i, i+SIZE));
+  return Promise.all(chunks.map(function(ch){
+    var b = db.batch();
+    ch.forEach(function(e){ b.set(e.ref, e.data); });
+    return b.commit().then(function(){ return ch.length; }, function(err){ console.error(err); return 0; });
+  })).then(function(counts){ return counts.reduce(function(a,c){ return a+c; }, 0); });
+}
 function bulkAddIssues(parsed){
   var now = Date.now();
   var localCounter = null;
@@ -2186,14 +2295,12 @@ function bulkAddIssues(parsed){
       ts: now+idx, updated: now+idx, progress: [], owner: p.owner, planDate: "", category: p.category || "" };
   });
   if(FIREBASE_ENABLED){
-    var batch = db.batch();
-    newIssues.forEach(function(iss){
-      var ref = db.collection(COLLECTION).doc(iss.id);
-      batch.set(ref, { site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner, planDate:"", category:iss.category });
+    commitInBatches(newIssues.map(function(iss){
+      return { ref:db.collection(COLLECTION).doc(iss.id),
+               data:{ site:iss.site, issue:iss.issue, status:iss.status, ts:iss.ts, updated:iss.updated, progress:[], owner:iss.owner, planDate:"", category:iss.category } };
+    })).then(function(n){
+      showToast(n===newIssues.length ? "Imported "+n+" issues" : "Imported "+n+" of "+newIssues.length+" — the rest failed; check the list before importing again");
     });
-    batch.commit()
-      .then(function(){ showToast("Imported "+newIssues.length+" issues"); })
-      .catch(function(err){ console.error(err); showToast("Import failed — check connection"); });
   }else{
     newIssues.forEach(function(iss){ issues.unshift(iss); });
     saveIssues();
@@ -2203,14 +2310,12 @@ function bulkAddIssues(parsed){
 }
 function restoreIssues(list){
   if(FIREBASE_ENABLED){
-    var batch = db.batch();
-    list.forEach(function(r){
-      var ref = db.collection(COLLECTION).doc(r.id);
-      batch.set(ref, { site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate), category:normCategory(r.category) });
+    commitInBatches(list.map(function(r){
+      return { ref:db.collection(COLLECTION).doc(r.id),
+               data:{ site:r.site, issue:r.issue, status:r.status, ts:r.ts, updated:r.updated||r.ts, progress:r.progress||[], owner:r.owner||"Unknown", planDate:normPlanDate(r.planDate), category:normCategory(r.category) } };
+    })).then(function(n){
+      showToast(n===list.length ? "Restored "+n+" issues" : "Restored "+n+" of "+list.length+" — the rest failed; run the restore again (it is safe to repeat)");
     });
-    batch.commit()
-      .then(function(){ showToast("Restored "+list.length+" issues"); })
-      .catch(function(err){ console.error(err); showToast("Restore failed — check connection"); });
   }else{
     list.forEach(function(r){
       var existing = issues.find(function(i){ return i.id===r.id; });
@@ -2466,7 +2571,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin ("+ADMIN_NAME+") to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
       errEl.style.display = "block";
       return;
     }
@@ -2536,6 +2641,89 @@ document.getElementById("addUserBtn").addEventListener("click", function(){
     showToast(name+" added");
     renderApprovedUsersList();
   }).catch(function(err){ console.error(err); showToast("Could not add — check connection"); });
+});
+
+// ───────────────────────── resolve a whole site ─────────────────────────
+// One note, one button: every unresolved issue shown for the site goes straight to Resolved and gets the
+// same note on its timeline. (This deliberately skips the Verify and Submitted A85 steps.)
+var srSite = "", srIds = [];
+function openSiteResolve(site){
+  var shown = getVisible().filter(function(i){ return i.site===site && i.status!=="Resolved"; });
+  if(!shown.length){ showToast("Nothing to resolve at "+site); return; }
+  var hidden = issues.filter(function(i){ return i.site===site && i.status!=="Resolved" && shown.indexOf(i)===-1; }).length;
+  srSite = site; srIds = shown.map(function(i){ return i.id; });
+  var counts = {}; shown.forEach(function(i){ counts[i.status] = (counts[i.status]||0)+1; });
+  var parts = ["Open","Verify","Submitted A85"].filter(function(st){ return counts[st]; }).map(function(st){ return counts[st]+" "+st; });
+  document.getElementById("srTitle").textContent = "Resolve all — "+site;
+  document.getElementById("srSummary").innerHTML = '<b>'+shown.length+' issue'+(shown.length!==1?'s':'')+'</b> will be set to <b>Resolved</b>'+
+    '<div class="sr-counts">'+parts.join(" · ")+'</div>';
+  document.getElementById("srWarn").textContent = "This skips the Verify and Submitted A85 steps for these issues.";
+  var h = document.getElementById("srHidden");
+  h.style.display = hidden ? "" : "none";
+  h.textContent = hidden ? hidden+" other unresolved issue"+(hidden!==1?"s":"")+" at this site "+(hidden!==1?"are":"is")+" hidden by your filters and will NOT be changed." : "";
+  document.getElementById("srNote").value = "";
+  document.getElementById("srSave").textContent = "Resolve "+shown.length+" issue"+(shown.length!==1?"s":"");
+  document.getElementById("siteResolveOverlay").classList.add("show");
+  setTimeout(function(){ document.getElementById("srNote").focus(); }, 100);
+}
+function inChunks(items, size, worker){
+  var out = [], p = Promise.resolve();
+  for(var i=0; i<items.length; i+=size){
+    (function(chunk){ p = p.then(function(){ return Promise.all(chunk.map(worker)).then(function(r){ out = out.concat(r); }); }); })(items.slice(i, i+size));
+  }
+  return p.then(function(){ return out; });
+}
+function resolveSiteIssues(site, ids, note){
+  var now = Date.now(), who = currentUser || "Unknown", text = "Site resolved: "+note;
+  var entry = function(){ return { ts:now, note:text, by:who }; };
+  if(FIREBASE_ENABLED){
+    // one small transaction per issue: anything someone else already resolved is skipped, never double-logged
+    return inChunks(ids, 25, function(id){
+      var ref = db.collection(COLLECTION).doc(id);
+      return db.runTransaction(function(tx){
+        return tx.get(ref).then(function(doc){
+          if(!doc.exists) return "gone";
+          if(normStatus(doc.data().status)==="Resolved") return "skip";
+          tx.update(ref, { status:"Resolved", updated:now, progress: firebase.firestore.FieldValue.arrayUnion(entry()) });
+          return "ok";
+        });
+      }).catch(function(err){ console.error(err); return "fail"; });
+    }).then(function(res){
+      var c = { ok:0, skip:0, gone:0, fail:0 }; res.forEach(function(r){ c[r]++; });
+      showToast(c.fail
+        ? "Resolved "+c.ok+" of "+ids.length+" at "+site+" — "+c.fail+" failed; tap Resolve all again"
+        : "Resolved "+c.ok+" issue"+(c.ok!==1?"s":"")+" at "+site+(c.skip ? " ("+c.skip+" already resolved)" : ""));
+    });
+  }
+  var n = 0;
+  ids.forEach(function(id){
+    var iss = issues.find(function(i){ return i.id===id; });
+    if(iss && iss.status!=="Resolved"){
+      iss.status = "Resolved"; iss.updated = now;
+      if(!iss.progress) iss.progress = [];
+      iss.progress.push(entry()); n++;
+    }
+  });
+  saveIssues(); refreshAll(false);
+  showToast("Resolved "+n+" issue"+(n!==1?"s":"")+" at "+site);
+  return Promise.resolve();
+}
+document.getElementById("srCancel").addEventListener("click", function(){ document.getElementById("siteResolveOverlay").classList.remove("show"); });
+document.getElementById("srSave").addEventListener("click", function(){
+  var note = document.getElementById("srNote").value.trim();
+  if(!note){ showToast("Enter a note — it is added to every issue"); return; }
+  var btn = this; btn.disabled = true;
+  document.getElementById("siteResolveOverlay").classList.remove("show");
+  resolveSiteIssues(srSite, srIds.slice(), note).then(function(){ btn.disabled = false; }, function(){ btn.disabled = false; });
+});
+
+// ───────────────────────── category query ─────────────────────────
+function setCategoryFilter(v){
+  categoryFilter = v;
+  Array.prototype.forEach.call(document.querySelectorAll(".cchip"), function(c){ c.classList.toggle("active", c.getAttribute("data-cat-filter")===v); });
+}
+Array.prototype.forEach.call(document.querySelectorAll(".cchip"), function(c){
+  c.addEventListener("click", function(){ setCategoryFilter(c.getAttribute("data-cat-filter")); refreshAll(true); });
 });
 
 // ───────────────────────── plan date controls ─────────────────────────
