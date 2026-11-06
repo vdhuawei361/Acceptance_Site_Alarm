@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Site Acceptance Alarm Tracking</title>
+<title>OPS Site Acceptance Alarm Tracking</title>
 <!-- Firebase (only used if FIREBASE_ENABLED is set to true near the top of the script below) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -107,6 +107,60 @@
   .region-name{font-family:var(--mono); font-weight:800; font-size:13px; letter-spacing:1.5px; color:var(--rc);
     text-shadow:0 0 12px var(--rc);}
   .region-meta{font-size:10px; color:var(--subtext);}
+  /* ---- issues grouped by site: a site box on the left, one row per issue beside it ---- */
+  .list-inner{max-width:1100px; margin:0 auto;}
+  .site-block{display:flex; gap:8px; margin-bottom:12px; align-items:stretch;}
+  .site-box{flex:0 0 72px; display:flex; align-items:flex-start; justify-content:center; text-align:center; padding:14px 4px 8px;
+    border-radius:16px; border:1px solid var(--border); border-left:3px solid var(--rc, var(--accent));
+    background:linear-gradient(165deg, var(--panelHi), transparent 45%), var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);
+    font-weight:800; font-size:12px; letter-spacing:.3px; overflow-wrap:anywhere; color:var(--text);}
+  .site-name{position:sticky; top:14px;}      /* centred at first, then stays in view while you scroll this site's issues */
+  .site-rows{flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;}
+  .irow{padding:8px 10px 10px; border-radius:14px; border:1px solid var(--border); border-left:3px solid var(--open);
+    background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:inset 0 1px 0 var(--borderHi), 0 6px 16px var(--shadow);}
+  .irow.verify{border-left-color:var(--verify);} .irow.submitted{border-left-color:var(--submitted);} .irow.resolved{border-left-color:var(--closed);}
+  .irow-top{display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:7px; cursor:pointer;}
+  .irow-top .caret{color:var(--muted); font-size:10px; margin-left:4px;}
+  .irow.expanded .irow-top .caret{transform:rotate(180deg); display:inline-block;}
+  .irow-actions{display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;}
+  .irow-actions button{padding:5px 9px; border-radius:8px; border:1px solid var(--border); font-size:10px; font-weight:700; color:var(--text);
+    background:linear-gradient(180deg, var(--panelHi), transparent), var(--panelSolid); box-shadow:inset 0 1px 0 rgba(255,255,255,.07);}
+  .irow-actions .btn-progress{color:#B9A6FF;} .irow-actions .btn-verify{color:var(--verify);} .irow-actions .btn-pass{color:var(--closed);}
+  .irow-actions .btn-fail{color:var(--open);} .irow-actions .btn-reopen{color:var(--accent);}
+  .irow-grid{display:grid; gap:6px; align-items:stretch; cursor:pointer;
+    grid-template-columns:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"id desc desc desc" "note note note note" "user user plan del";}
+  .f{min-width:0; padding:5px 8px; border-radius:9px; background:var(--inputBg); border:1px solid var(--border); font-size:12px; line-height:1.3;
+    display:flex; flex-direction:column; justify-content:center;}
+  .f .cap{font-size:8px; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); margin-bottom:1px;}
+  .f .val{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere;}
+  .f .val.none{color:var(--muted);}
+  .f-id{grid-area:id; font-family:var(--mono); font-size:10px; font-weight:700; color:var(--accent); align-items:flex-start;}
+  .f-desc{grid-area:desc;} .f-desc .val{color:var(--text);}
+  .f-note{grid-area:note;} .f-note .val{color:var(--subtext);}
+  .f-user{grid-area:user;} .f-user .val{color:var(--text); font-weight:600;}
+  .f-plan{grid-area:plan; font-family:var(--mono);} .f-plan .val{font-size:11px; white-space:nowrap;}
+  .f-plan.overdue{border-color:rgba(251,111,141,.45);} .f-plan.overdue .val, .f-plan.overdue .cap{color:var(--danger);}
+  .f-del{grid-area:del; width:30px; border-radius:9px; border:1px solid var(--border); background:var(--inputBg); color:var(--danger);
+    display:flex; align-items:center; justify-content:center; padding:0;}
+  .f-del svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .irow-details{display:none; margin-top:9px; padding-top:9px; border-top:1px dashed var(--border); font-size:12px; color:var(--subtext); line-height:1.45;}
+  .irow.expanded .irow-details{display:block;}
+  .irow-details .meta{margin:0 0 6px;} .irow-details .full{margin-bottom:6px; color:var(--text);}
+  @media (max-width:420px){
+    .site-box{flex-basis:64px; font-size:11px;}
+    .irow-actions{gap:4px;} .irow-actions button{padding:4px 6px; font-size:9.5px;}
+  }
+  @media (min-width:720px){
+    .site-box{flex-basis:150px; font-size:19px; border-radius:22px; align-items:center; padding:8px 4px;}
+    .irow-grid{grid-template-columns:100px minmax(0,1.1fr) minmax(0,2.2fr) minmax(0,1.2fr) 118px 32px;
+      grid-template-areas:"id desc note user plan del";}
+    .f-id{font-size:11px; align-items:center;}
+  }
   .card .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
   .card .id{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.4px;}
   .badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 8px; border-radius:20px;}
@@ -200,6 +254,36 @@
   .sheet input[type=date]{min-height:44px; -webkit-appearance:none; appearance:none; text-align:left;}
   .plan{font-size:11px; color:var(--subtext); font-family:var(--mono); margin-bottom:8px;}
   .plan.overdue{color:var(--danger);}
+  /* ---- plan date query + chart ---- */
+  .plan-badge{display:none; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; padding:5px 6px 5px 12px;
+    border-radius:20px; border:1px solid rgba(55,214,196,.45); background:rgba(55,214,196,.10); font-size:12px; font-weight:700; color:var(--accent);}
+  .plan-badge button{background:none; border:none; color:var(--accent); font-size:13px; font-weight:800; padding:2px 8px;}
+  #planView{flex:1; overflow-y:auto; padding:10px 14px 90px; display:none; -webkit-overflow-scrolling:touch;}
+  .mini{font-size:10px; color:var(--muted); letter-spacing:1px; display:block; margin:0 0 4px;}
+  .plan-rangebox{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .plan-rangebox .field{flex:1; min-height:42px; margin-bottom:0; -webkit-appearance:none; appearance:none; text-align:left;}
+  .plan-rangebox span{color:var(--muted);}
+  .plan-summary{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 10px;}
+  .plan-pill{font-size:11px; font-weight:700; padding:4px 10px; border-radius:16px; background:var(--inputBg); border:1px solid var(--border); color:var(--subtext);}
+  .plan-pill b{color:var(--text); font-family:var(--mono);}
+  .plan-pill.bad{color:var(--danger); border-color:rgba(251,111,141,.4);} .plan-pill.bad b{color:var(--danger);}
+  .plan-card{background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:12px; padding:10px 8px 8px; margin-bottom:6px; box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);}
+  .plan-legend{display:flex; flex-wrap:wrap; gap:4px 12px; font-size:10px; color:var(--subtext); padding:0 4px 8px;}
+  .plan-legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:4px; vertical-align:-1px;}
+  .chart-wrap{display:flex; align-items:flex-start;}
+  #planScroll{flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;}
+  #planAxis,#planPlot{display:block;}
+  .plan-note{font-size:10px; color:var(--muted); padding:6px 4px 0; line-height:1.4;}
+  .ag-hdr{display:flex; justify-content:space-between; align-items:center; margin:12px 2px 6px; padding:6px 12px; border-radius:10px;
+    border:1px solid var(--border); border-left:3px solid var(--accent); background:var(--panel); font-size:12px; font-weight:700;}
+  .ag-hdr.late{border-left-color:var(--danger); color:var(--danger);} .ag-hdr .n{font-family:var(--mono); color:var(--subtext); font-size:11px;}
+  .ag-row{display:flex; align-items:center; gap:8px; padding:9px 12px; margin-bottom:6px; border-radius:10px; background:var(--inputBg); border:1px solid var(--border); font-size:12px;}
+  .ag-row .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .ag-id{font-family:var(--mono); font-size:10px; color:var(--accent); font-weight:700; flex-shrink:0;}
+  .ag-site{font-weight:700; flex-shrink:0;}
+  .ag-text{flex:1; min-width:0; color:var(--subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ag-more{display:block; width:100%; padding:10px; margin-top:6px; border-radius:10px; border:1px solid var(--border); background:var(--inputBg); color:var(--accent); font-weight:700; font-size:12px;}
   .sheet .btnrow{display:flex; gap:8px; margin-top:16px;}
   .sheet .btnrow button{flex:1; padding:12px 0; border-radius:10px; border:none; font-size:13px; font-weight:700;}
   .btn-cancel{background:var(--inputBg); color:var(--muted);}
@@ -231,7 +315,7 @@
     <div class="brand">
       <div class="icon">📡</div>
       <div class="titles">
-        <div class="t1">Site Acceptance</div>
+        <div class="t1">OPS Site Acceptance</div>
         <div class="t2" id="syncBadge">ALARM TRACKING</div>
       </div>
     </div>
@@ -264,13 +348,42 @@
     <div class="chip" data-filter="Submitted A85">Submitted A85</div>
     <div class="chip" data-filter="Resolved">Resolved</div>
   </div>
+  <div class="plan-badge" id="planBadge"><span id="planBadgeText"></span><button id="planBadgeClear" title="Clear plan date filter">✕</button></div>
   <div class="tabs">
     <div class="tab active" data-view="list">List</div>
     <div class="tab" data-view="map">Mind Map</div>
+    <div class="tab" data-view="plan">Plan</div>
   </div>
 </div>
 
 <div id="listView"></div>
+
+<div id="planView">
+  <label class="mini">QUERY BY PLAN DATE</label>
+  <select class="field" id="planPreset">
+    <option value="all">Any (no plan date filter)</option>
+    <option value="overdue">Overdue (past plan date, not resolved)</option>
+    <option value="today">Today</option>
+    <option value="next7">Next 7 days</option>
+    <option value="week">This week</option>
+    <option value="month">This month</option>
+    <option value="none">No plan date</option>
+    <option value="range">Custom range…</option>
+  </select>
+  <div class="plan-rangebox" id="planRangeBox" style="display:none">
+    <input type="date" class="field" id="planFrom"><span>→</span><input type="date" class="field" id="planTo">
+  </div>
+  <div class="plan-summary" id="planSummary"></div>
+  <div class="plan-card">
+    <div class="plan-legend" id="planLegend"></div>
+    <div class="chart-wrap" id="planChartWrap">
+      <svg id="planAxis"></svg>
+      <div id="planScroll"><svg id="planPlot"></svg></div>
+    </div>
+    <div class="plan-note" id="planChartNote"></div>
+  </div>
+  <div id="planAgenda"></div>
+</div>
 
 <div id="mapView">
   <svg id="mapSvg">
@@ -669,8 +782,9 @@ function getSiteList(){
   });
   return Object.keys(set).sort();
 }
-function getVisible(){
+function getVisible(ignorePlan){
   return issues.filter(function(i){
+    if(!ignorePlan && !planMatch(i)) return false;
     if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return false;
     if(siteFilter!=="All Sites" && i.site!==siteFilter) return false;
     if(filter!=="All" && i.status!==filter) return false;
@@ -696,6 +810,13 @@ function fmtDate(ts){
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 // ───────────────────────── list view ─────────────────────────
+var TRASH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
+var expandedRows = {};          // rows whose details are open stay open across refreshes
+var STAGE_ORDER = ["Open","Verify","Submitted A85","Resolved"];
+function latestUpdate(iss){
+  var p = (iss.progress||[]).slice().sort(function(a,b){ return b.ts-a.ts; })[0];
+  return p ? { note:p.note, by:p.by||"—" } : null;
+}
 function renderList(){
   var visible = getVisible();
   var el = document.getElementById("listView");
@@ -708,55 +829,76 @@ function renderList(){
       return '<button class="btn-pass" data-status-act="apass">✓ Pass</button><button class="btn-fail" data-status-act="afail">✕ Failed</button>';
     return '<button class="btn-reopen" data-status-act="reopen">Reopen</button>';
   }
-  function cardHtml(iss){
-    var cls = statusKey(iss.status);
-    var progress = iss.progress || [];
-    var timelineHtml = "";
-    if(progress.length>0){
-      var sorted = progress.slice().sort(function(a,b){ return a.ts-b.ts; });
-      timelineHtml = '<div class="timeline">' + sorted.map(function(p){
-        return '<div class="tl-item"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
-      }).join("") + '</div>';
-    }
-    return '<div class="card '+cls+'" data-id="'+iss.id+'">'+
-      '<div class="top"><span class="id">'+iss.id+'</span><span class="badge '+cls+'">'+iss.status.toUpperCase()+'</span></div>'+
-      '<div class="site">'+esc(iss.site)+'</div>'+
-      '<div class="desc">'+esc(iss.issue)+'</div>'+
-      '<div class="meta">'+fmtTime(iss.ts)+' · registered '+fmtDate(iss.ts)+' · by '+esc(iss.owner||"Unknown")+'</div>'+
-      (iss.planDate ? '<div class="plan'+(isOverdue(iss)?' overdue':'')+'">📅 Plan '+fmtPlan(iss.planDate)+(isOverdue(iss)?' · overdue':'')+'</div>' : '')+
-      timelineHtml+
-      '<div class="actions">'+
-        '<button class="btn-edit" data-act="edit">Edit</button>'+
-        '<button class="btn-progress" data-act="progress">Progress</button>'+
-        statusButtonsHtml(iss)+
-        '<button class="btn-del" data-act="del">Delete</button>'+
-      '</div></div>';
+  function field(cls, cap, text){
+    return '<div class="f '+cls[0]+'"'+'>'+(cap ? '<span class="cap">'+cap+'</span>' : '')+
+      '<span class="val'+(cls[1] ? ' none' : '')+'">'+text+'</span></div>';
+  }
+  function detailsHtml(iss, last){
+    var progress = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
+    var tl = progress.length ? '<div class="timeline">' + progress.map(function(p){
+      return '<div class="tl-item"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
+    }).join("") + '</div>' : '';
+    return '<div class="irow-details">'+
+      '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+'</div>'+
+      '<div class="full">'+esc(iss.issue)+'</div>'+tl+'</div>';
+  }
+  function rowHtml(iss){
+    var cls = statusKey(iss.status), last = latestUpdate(iss), late = isOverdue(iss);
+    return '<div class="irow '+cls+(expandedRows[iss.id] ? ' expanded' : '')+'" data-id="'+iss.id+'">'+
+      '<div class="irow-top"><span><span class="badge '+cls+'">'+iss.status.toUpperCase()+'</span><span class="caret">▾</span></span>'+
+        '<span class="irow-actions">'+
+          '<button class="btn-edit" data-act="edit">Edit</button>'+
+          '<button class="btn-progress" data-act="progress">Progress</button>'+
+          statusButtonsHtml(iss)+
+        '</span></div>'+
+      '<div class="irow-grid">'+
+        '<div class="f f-id">'+esc(iss.id)+'</div>'+
+        field(["f-desc"], "", esc(iss.issue))+
+        field(["f-note", !last], "Last update note", last ? esc(last.note) : "—")+
+        field(["f-user", !last], "Last update by", last ? esc(last.by) : "—")+
+        field(["f-plan"+(late?" overdue":""), !iss.planDate], late ? "Overdue" : "Plan date", iss.planDate ? fmtPlan(iss.planDate) : "—")+
+        '<button class="f-del" data-act="del" title="Delete">'+TRASH_SVG+'</button>'+
+      '</div>'+
+      detailsHtml(iss, last)+
+    '</div>';
+  }
+  function siteBlock(site, list, rc){
+    list = list.slice().sort(function(a,b){
+      var sa = STAGE_ORDER.indexOf(a.status), sb = STAGE_ORDER.indexOf(b.status);
+      return sa!==sb ? sa-sb : b.ts-a.ts;                       // Open first, Resolved last; newest first within a stage
+    });
+    return '<div class="site-block" style="--rc:'+rc+'"><div class="site-box"><span class="site-name">'+esc(site)+'</span></div>'+
+      '<div class="site-rows">'+list.map(rowHtml).join("")+'</div></div>';
   }
   var groups = {};
   REGION_ORDER.forEach(function(r){ groups[r] = []; });
   visible.forEach(function(iss){ groups[getRegion(iss.site)].push(iss); });
-  el.innerHTML = REGION_ORDER.filter(function(r){ return groups[r].length>0; }).map(function(r){
-    var list = groups[r].slice().sort(function(a,b){
-      return a.site<b.site ? -1 : a.site>b.site ? 1 : b.ts-a.ts;
-    });
+  el.innerHTML = '<div class="list-inner">' + REGION_ORDER.filter(function(r){ return groups[r].length>0; }).map(function(r){
+    var list = groups[r];
     var openCount = list.filter(function(i){ return i.status==="Open"; }).length;
     var verifyCount = list.filter(function(i){ return i.status==="Verify"; }).length;
     var submittedCount = list.filter(function(i){ return i.status==="Submitted A85"; }).length;
-    var siteCount = {}; list.forEach(function(i){ siteCount[i.site]=true; });
+    var bySite = {}; list.forEach(function(i){ (bySite[i.site] = bySite[i.site] || []).push(i); });
+    var sites = Object.keys(bySite).sort();
     return '<div class="region-hdr" style="--rc:'+REGION_COLORS[r]+'">'+
       '<span class="region-name">'+r+'</span>'+
-      '<span class="region-meta">'+Object.keys(siteCount).length+' site'+(Object.keys(siteCount).length!==1?'s':'')+
+      '<span class="region-meta">'+sites.length+' site'+(sites.length!==1?'s':'')+
       ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' verify' : '')+(submittedCount ? ' · '+submittedCount+' A85' : '')+'</span></div>'+
-      list.map(cardHtml).join("");
-  }).join("");
-  Array.prototype.forEach.call(el.querySelectorAll(".card"), function(card){
-    var id = card.getAttribute("data-id");
-    card.querySelector('[data-act="edit"]').addEventListener("click", function(){ openEdit(id); });
-    card.querySelector('[data-act="progress"]').addEventListener("click", function(){ openProgress(id); });
-    Array.prototype.forEach.call(card.querySelectorAll("[data-status-act]"), function(btn){
+      sites.map(function(site){ return siteBlock(site, bySite[site], REGION_COLORS[r]); }).join("");
+  }).join("") + '</div>';
+  Array.prototype.forEach.call(el.querySelectorAll(".irow"), function(row){
+    var id = row.getAttribute("data-id");
+    row.querySelector('[data-act="edit"]').addEventListener("click", function(){ openEdit(id); });
+    row.querySelector('[data-act="progress"]').addEventListener("click", function(){ openProgress(id); });
+    Array.prototype.forEach.call(row.querySelectorAll("[data-status-act]"), function(btn){
       btn.addEventListener("click", function(){ doStatusAction(btn.getAttribute("data-status-act"), id); });
     });
-    card.querySelector('[data-act="del"]').addEventListener("click", function(){ confirmDeleteIssue(id); });
+    row.querySelector('[data-act="del"]').addEventListener("click", function(){ confirmDeleteIssue(id); });
+    // tap the status or the fields to show/hide the full details (registered, owner, whole timeline)
+    row.addEventListener("click", function(e){
+      if(e.target.closest("button")) return;
+      expandedRows[id] = row.classList.toggle("expanded");
+    });
   });
 }
 function confirmDeleteIssue(id){
@@ -805,6 +947,231 @@ function todayStr(){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
 }
 function isOverdue(iss){ return !!iss.planDate && iss.status!=="Resolved" && iss.planDate < todayStr(); }
+// ───────────────────────── plan date: query + chart ─────────────────────────
+// All dates are "YYYY-MM-DD" strings, and day arithmetic is done in UTC, so a date can
+// never slip across a daylight-saving change or a time zone.
+var planFilter = { mode:"all", from:"", to:"" };     // all | overdue | today | next7 | week | month | none | range
+var planAgendaLimit = 60, planScrollLeft = null, planAxisKey = "";
+function p2(n){ return (n<10?"0":"")+n; }
+function utcOf(str){ var q = str.split("-"); return Date.UTC(+q[0], +q[1]-1, +q[2]); }
+function dateAdd(str, n){
+  var t = new Date(utcOf(str) + n*86400000);
+  return t.getUTCFullYear()+"-"+p2(t.getUTCMonth()+1)+"-"+p2(t.getUTCDate());
+}
+function daysBetween(a, b){ return Math.round((utcOf(b)-utcOf(a))/86400000); }
+function weekStart(str){ return dateAdd(str, -((new Date(utcOf(str)).getUTCDay()+6)%7)); }   // the Monday
+function weekdayShort(str){ return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(utcOf(str)).getUTCDay()]; }
+// The from/to that the current query means (a null bound is open-ended).
+function planBounds(){
+  var t = todayStr(), m = planFilter.mode;
+  if(m==="today") return { from:t, to:t };
+  if(m==="next7") return { from:t, to:dateAdd(t,6) };
+  if(m==="week"){ var ws = weekStart(t); return { from:ws, to:dateAdd(ws,6) }; }
+  if(m==="month"){
+    var first = t.slice(0,7)+"-01", d = new Date(utcOf(first)), last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0));
+    return { from:first, to:last.getUTCFullYear()+"-"+p2(last.getUTCMonth()+1)+"-"+p2(last.getUTCDate()) };
+  }
+  if(m==="range"){
+    var f = planFilter.from, to = planFilter.to;
+    if(f && to && f>to){ var x = f; f = to; to = x; }          // entered backwards: just swap
+    return { from:f||null, to:to||null };
+  }
+  return null;
+}
+function planMatch(iss){
+  var m = planFilter.mode;
+  if(m==="all") return true;
+  if(m==="none") return !iss.planDate;
+  if(m==="overdue") return !!iss.planDate && iss.planDate < todayStr() && iss.status!=="Resolved";
+  var r = planBounds();
+  if(m==="range" && !r.from && !r.to) return true;              // nothing chosen yet: don't hide anything
+  if(!iss.planDate) return false;
+  if(r.from && iss.planDate < r.from) return false;
+  if(r.to && iss.planDate > r.to) return false;
+  return true;
+}
+function dateInPlanFilter(d){                                   // for dimming bars outside the query
+  var m = planFilter.mode;
+  if(m==="all" || m==="none") return true;
+  if(m==="overdue") return d < todayStr();
+  var r = planBounds();
+  if(!r || (!r.from && !r.to)) return true;
+  return !(r.from && d<r.from) && !(r.to && d>r.to);
+}
+function planDescribe(){
+  var names = { overdue:"Overdue", today:"Today", next7:"Next 7 days", week:"This week", month:"This month", none:"No plan date" };
+  if(names[planFilter.mode]) return names[planFilter.mode];
+  var r = planBounds();
+  if(!r || (!r.from && !r.to)) return "";
+  if(r.from && r.from===r.to) return fmtPlan(r.from);
+  return (r.from ? fmtPlan(r.from) : "…")+" → "+(r.to ? fmtPlan(r.to) : "…");
+}
+function renderPlanBadge(){
+  var b = document.getElementById("planBadge"), txt = planDescribe();
+  if(planFilter.mode==="all" || !txt){ b.style.display = "none"; return; }
+  document.getElementById("planBadgeText").textContent = "📅 Plan date: "+txt;
+  b.style.display = "flex";
+}
+function syncPlanControls(){
+  document.getElementById("planPreset").value = planFilter.mode;
+  document.getElementById("planRangeBox").style.display = planFilter.mode==="range" ? "flex" : "none";
+  document.getElementById("planFrom").value = planFilter.from || "";
+  document.getElementById("planTo").value = planFilter.to || "";
+}
+function setPlanQuery(next){
+  planFilter = next; planAgendaLimit = 60;
+  refreshAll(true);
+}
+function niceStep(max){
+  if(max<=5) return 1;
+  var steps = [2,5,10,20,50,100,200,500,1000];
+  for(var i=0;i<steps.length;i++) if(max/steps[i] <= 5) return steps[i];
+  return 1000;
+}
+var PLAN_STACK = ["Open","Verify","Submitted A85","Resolved"];
+
+function renderPlan(){
+  syncPlanControls();
+  var base = getVisible(true);                                  // every other filter applies; the plan query itself does not
+  var dated = base.filter(function(i){ return i.planDate; });
+  var today = todayStr(), counts = {};
+  dated.forEach(function(i){
+    var c = counts[i.planDate] || (counts[i.planDate] = { total:0 });
+    c.total++; c[i.status] = (c[i.status]||0)+1;
+  });
+  var dates = Object.keys(counts).sort();
+  var overdue = dated.filter(function(i){ return i.planDate<today && i.status!=="Resolved"; }).length;
+  var summary = '<span class="plan-pill"><b>'+dated.length+'</b> planned</span>';
+  if(overdue) summary += '<span class="plan-pill bad"><b>'+overdue+'</b> overdue</span>';
+  summary += '<span class="plan-pill"><b>'+(base.length-dated.length)+'</b> no plan date</span>';
+  if(planFilter.mode!=="all" && planDescribe()) summary += '<span class="plan-pill">showing <b>'+getVisible().length+'</b></span>';
+  document.getElementById("planSummary").innerHTML = summary;
+  document.getElementById("planLegend").innerHTML = PLAN_STACK.map(function(st){
+    return '<span><i style="background:'+STATUS[st].color+'"></i>'+st+'</span>';
+  }).join("");
+
+  var wrap = document.getElementById("planChartWrap"), note = document.getElementById("planChartNote");
+  var axis = document.getElementById("planAxis"), plot = document.getElementById("planPlot"), scroller = document.getElementById("planScroll");
+  axis.innerHTML = ""; plot.innerHTML = "";
+  if(dates.length===0){
+    wrap.style.display = "none";
+    note.textContent = "No issues have a plan date yet. Set one in an issue's Edit form and it will appear here.";
+    renderAgenda();
+    return;
+  }
+  wrap.style.display = "flex";
+
+  // which dates get a column: every day in the range, or (if the range is huge) only days with issues
+  var span = daysBetween(dates[0], dates[dates.length-1]) + 1, compact = span > 120, axisDates = [];
+  if(compact){ axisDates = dates.slice(); }
+  else{
+    var s0 = dates[0], e0 = dates[dates.length-1], need = 7 - span;       // always at least a week wide
+    if(need>0){ s0 = dateAdd(s0, -Math.floor(need/2)); e0 = dateAdd(e0, Math.ceil(need/2)); }
+    for(var d0=s0, guard=0; d0<=e0 && guard<400; d0=dateAdd(d0,1), guard++) axisDates.push(d0);
+  }
+  note.textContent = compact
+    ? "The range is wider than 120 days, so only dates that have issues are shown. Tap a bar to list that date."
+    : "Tap a bar to list that date's issues. The dashed line is today; shaded columns are weekends.";
+
+  var H = 214, TOP = 24, BOT = 40, plotH = H-TOP-BOT, STEP = 34, BARW = 24, PAD = 8;
+  var maxT = 0; dates.forEach(function(d){ maxT = Math.max(maxT, counts[d].total); });
+  var stepY = niceStep(maxT), yMax = Math.ceil(maxT/stepY)*stepY;
+  function Y(v){ return TOP + plotH*(1 - v/yMax); }
+  var W = PAD*2 + axisDates.length*STEP;
+  axis.setAttribute("width", 28); axis.setAttribute("height", H);
+  plot.setAttribute("width", W);  plot.setAttribute("height", H);
+
+  for(var v=0; v<=yMax; v+=stepY){
+    var at = svgEl("text",{x:24, y:Y(v)+3, "text-anchor":"end", fill:"#6B7E98", "font-size":9, "font-family":"var(--mono)"});
+    at.textContent = v; axis.appendChild(at);
+    plot.appendChild(svgEl("line",{x1:0, x2:W, y1:Y(v), y2:Y(v), stroke:"rgba(255,255,255,"+(v===0?".16":".07")+")", "stroke-dasharray": v===0?"":"2 4"}));
+  }
+  var single = planFilter.mode==="range" && planFilter.from && planFilter.from===planFilter.to ? planFilter.from : null;
+  var curYear = today.slice(0,4), prevMonth = "";
+  axisDates.forEach(function(d, i){
+    var x0 = PAD + i*STEP, bx = x0 + (STEP-BARW)/2, c = counts[d];
+    var dow = new Date(utcOf(d)).getUTCDay();
+    if(!compact && (dow===0 || dow===6))
+      plot.appendChild(svgEl("rect",{x:x0, y:TOP, width:STEP, height:plotH, fill:"rgba(255,255,255,.03)"}));
+    if(d===today){
+      plot.appendChild(svgEl("line",{x1:x0+STEP/2, x2:x0+STEP/2, y1:TOP-8, y2:TOP+plotH, stroke:"#37D6C4", "stroke-opacity":.55, "stroke-dasharray":"3 3"}));
+    }
+    if(c){
+      var dim = dateInPlanFilter(d) ? 1 : 0.28, cum = 0;
+      PLAN_STACK.forEach(function(st){
+        var n = c[st]||0; if(!n) return;
+        var y1 = Y(cum+n), y2 = Y(cum);
+        plot.appendChild(svgEl("rect",{x:bx, y:y1, width:BARW, height:Math.max(1,y2-y1), rx:3, fill:STATUS[st].color, opacity:dim, stroke:"#0B1322", "stroke-width":1}));
+        cum += n;
+      });
+      var tl = svgEl("text",{x:bx+BARW/2, y:Y(c.total)-5, "text-anchor":"middle", fill:"#E7EEF9", "font-size":10, "font-weight":700, "font-family":"var(--mono)", opacity:dim});
+      tl.textContent = c.total; plot.appendChild(tl);
+    }
+    if(single===d)
+      plot.appendChild(svgEl("rect",{x:x0+1, y:TOP-14, width:STEP-2, height:plotH+14+BOT-6, rx:6, fill:"none", stroke:"#37D6C4", "stroke-width":1.4}));
+    var unresolved = c ? ((c.total||0)-(c["Resolved"]||0)) : 0;
+    var col = d===today ? "#37D6C4" : (d<today && unresolved>0 ? "#FB6F8D" : "#9FB0C8");
+    var dl = svgEl("text",{x:x0+STEP/2, y:TOP+plotH+14, "text-anchor":"middle", fill:col, "font-size":9, "font-weight": d===today?800:600, "font-family":"var(--mono)"});
+    dl.textContent = +d.slice(8,10); plot.appendChild(dl);
+    var mKey = d.slice(0,7);
+    // month under the first column, the 1st, and every Monday, so one is always on screen however far you scroll
+    if(compact || i===0 || +d.slice(8,10)===1 || dow===1){
+      var ml = svgEl("text",{x:x0+STEP/2, y:TOP+plotH+27, "text-anchor":"middle", fill:"#6B7E98", "font-size":8, "font-weight":700});
+      ml.textContent = MONTHS_SHORT[+d.slice(5,7)-1] + (d.slice(0,4)!==curYear ? " ’"+d.slice(2,4) : "");
+      plot.appendChild(ml);
+    }
+    prevMonth = mKey;
+    var hit = svgEl("rect",{x:x0, y:0, width:STEP, height:H, fill:"transparent", style:"cursor:pointer"});
+    hit.addEventListener("click", function(){ setPlanDate(d); });
+    plot.appendChild(hit);
+  });
+
+  // keep the scroll position across redraws; start near today (or the next planned date) the first time
+  var key = axisDates[0]+"~"+axisDates[axisDates.length-1];
+  if(key!==planAxisKey){ planAxisKey = key; planScrollLeft = null; }
+  if(planScrollLeft===null){
+    var target = axisDates.indexOf(today);
+    if(target<0){ target = axisDates.length-1; for(var k=0;k<axisDates.length;k++){ if(axisDates[k]>=today){ target = k; break; } } }
+    var k0 = Math.max(0, target-2);                          // start on a column boundary so no bar is cut in half
+    scroller.scrollLeft = k0 ? PAD + k0*STEP : 0;
+  }else{ scroller.scrollLeft = planScrollLeft; }
+  renderAgenda();
+}
+function setPlanDate(d){
+  var same = planFilter.mode==="range" && planFilter.from===d && planFilter.to===d;
+  setPlanQuery(same ? { mode:"all", from:"", to:"" } : { mode:"range", from:d, to:d });
+}
+function renderAgenda(){
+  var el = document.getElementById("planAgenda");
+  var list = getVisible().slice().sort(function(a,b){
+    if(!!a.planDate !== !!b.planDate) return a.planDate ? -1 : 1;           // dated first, undated last
+    if(a.planDate !== b.planDate) return a.planDate < b.planDate ? -1 : 1;
+    return a.site < b.site ? -1 : (a.site > b.site ? 1 : b.ts - a.ts);
+  });
+  if(list.length===0){ el.innerHTML = '<div class="empty-note">No issues match this plan date query.</div>'; return; }
+  var today = todayStr(), groupN = {}, groupOpen = {};
+  list.forEach(function(i){ var k = i.planDate||""; groupN[k] = (groupN[k]||0)+1; if(i.status!=="Resolved") groupOpen[k] = (groupOpen[k]||0)+1; });
+  var html = "", cur = null, shown = 0;
+  for(var n=0; n<list.length && shown<planAgendaLimit; n++){
+    var i = list[n], k = i.planDate||"";
+    if(k!==cur){
+      cur = k;
+      var late = k && k<today && groupOpen[k]>0;
+      html += '<div class="ag-hdr'+(late?' late':'')+'"><span>'+(k ? weekdayShort(k)+' '+fmtPlan(k)+(late?' · overdue':'') : 'No plan date')+'</span><span class="n">'+groupN[k]+'</span></div>';
+    }
+    html += '<div class="ag-row" data-id="'+i.id+'"><span class="dot" style="background:'+STATUS[i.status].color+'"></span>'+
+      '<span class="ag-id">'+esc(i.id)+'</span><span class="ag-site">'+esc(i.site)+'</span><span class="ag-text">'+esc(i.issue)+'</span></div>';
+    shown++;
+  }
+  if(shown<list.length) html += '<button class="ag-more" id="agMore">Show '+Math.min(60, list.length-shown)+' more ('+(list.length-shown)+' left)</button>';
+  el.innerHTML = html;
+  Array.prototype.forEach.call(el.querySelectorAll(".ag-row"), function(row){
+    row.addEventListener("click", function(){ openEdit(row.getAttribute("data-id")); });
+  });
+  var more = document.getElementById("agMore");
+  if(more) more.addEventListener("click", function(){ planAgendaLimit += 60; renderAgenda(); });
+}
+
 function ringRadius(n, nodeR, minR){
   if(n<=1) return minR;
   return Math.max(minR, n*(2*nodeR+MARGIN)/(2*Math.PI));
@@ -1448,7 +1815,7 @@ document.getElementById("formSave").addEventListener("click", function(){
     showToast(editingId+" updated");
   }else{
     var iss = addIssue(site, text, planDate);
-    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search="";
+    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" };
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
     setActiveChip("All");
@@ -1579,8 +1946,10 @@ Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(x){ x.classList.toggle("active", x===t); });
     document.getElementById("listView").style.display = view==="list" ? "block" : "none";
     document.getElementById("mapView").style.display = view==="map" ? "block" : "none";
+    document.getElementById("planView").style.display = view==="plan" ? "block" : "none";
     syncDetailOpen();
     if(view==="map") fitToScreen();
+    if(view==="plan") renderPlan();
   });
 });
 
@@ -1955,10 +2324,12 @@ function refreshAll(refit){
   refreshSiteSelect();
   refreshStats();
   renderList();
+  renderPlanBadge();
   showDetail();
   if(view==="map"){
     if(refit) fitToScreen(); else renderMap();
   }
+  if(view==="plan") renderPlan();
 }
 
 // ───────────────────────── username ─────────────────────────
@@ -1977,7 +2348,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. ZASSSAH (admin) is always
+// Checks whether `name` is allowed to sign in. ZASSAH (admin) is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
@@ -2093,6 +2464,18 @@ document.getElementById("addUserBtn").addEventListener("click", function(){
     renderApprovedUsersList();
   }).catch(function(err){ console.error(err); showToast("Could not add — check connection"); });
 });
+
+// ───────────────────────── plan date controls ─────────────────────────
+document.getElementById("planPreset").addEventListener("change", function(e){
+  setPlanQuery({ mode:e.target.value, from:"", to:"" });
+});
+["planFrom","planTo"].forEach(function(id){
+  document.getElementById(id).addEventListener("change", function(){
+    setPlanQuery({ mode:"range", from:document.getElementById("planFrom").value, to:document.getElementById("planTo").value });
+  });
+});
+document.getElementById("planBadgeClear").addEventListener("click", function(){ setPlanQuery({ mode:"all", from:"", to:"" }); });
+document.getElementById("planScroll").addEventListener("scroll", function(){ planScrollLeft = this.scrollLeft; });
 
 // ───────────────────────── init ─────────────────────────
 loadAll();
