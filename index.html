@@ -1071,10 +1071,10 @@ function isOverdue(iss){ return !!iss.planDate && iss.status!=="Resolved" && iss
 // ("temp" matches "High Temp 40C" but not "Attempt"). An issue that matches nothing goes to the last group, "Other".
 // To change the grouping: edit the words below and upload the file again — nothing else needs to change.
 var ISSUE_GROUPS = [
-  { name:"External alarm", words:["external alarm", "rect", "rectifier", "temp", "temperature", "battery stolen", "spd", "pmu"] },
-  { name:"Power issue",    words:["main power", "mains power", "power failure", "ac input", "dc input", "low voltage", "power supply", "power connector"] },
-  { name:"Hardware issue", words:["gnss", "board", "clock", "canbus", "rtwp", "rssi", "gain", "interference noise"] },
-  { name:"Cable/SFP",      words:["cpri", "ald", "maintenance link", "optical", "sfp", "interface"] },
+  { name:"External alarm", words:["external alarm", "rect", "rectifier", "temp", "temperature", "battery stolen", "spd", "pmu", "smoke"] },
+  { name:"Power issue",    words:["main power", "mains power", "power failure", "ac input", "dc input", "dc low", "low voltage", "power supply", "power connector"] },
+  { name:"Hardware issue", words:["gnss", "board", "clock", "canbus", "rtwp", "rssi", "gain", "interference noise", "vswr", "hardware fault"] },
+  { name:"Cable/SFP",      words:["cpri", "ald", "maintenance link", "optical", "sfp", "interface", "radio link"] },
   { name:"Cell Down",      words:["cell blocked", "cell block", "cell unusable", "cell unavailable"] },
   { name:"Other",          words:[] }
 ];
