@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>OPS Site Acceptance Alarm Tracking</title>
+<title>OPS Site Issue Acceptance</title>
 <!-- Firebase (only used if FIREBASE_ENABLED is set to true near the top of the script below) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -41,9 +41,9 @@
     border-bottom:1px solid var(--border); box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 24px var(--shadow);
     padding:10px 14px; padding-top:max(10px, env(safe-area-inset-top)); flex-shrink:0; position:relative; z-index:2;}
   .header-row{display:flex; align-items:center; justify-content:space-between;}
-  .brand{display:flex; align-items:center; gap:8px;}
+  .brand{display:flex; align-items:center; gap:8px; flex:1; min-width:0; padding-right:8px;}
   .brand .icon{font-size:20px; filter:drop-shadow(0 0 8px var(--accentGlow));}
-  .brand .titles{line-height:1.15;}
+  .brand .titles{line-height:1.15; min-width:0;}
   .brand .titles .t1{font-weight:700; font-size:15px; letter-spacing:.2px;}
   .brand .titles .t2{font-size:9px; color:var(--accent); letter-spacing:1px; font-family:var(--mono);}
   #menuBtn{background:linear-gradient(160deg, var(--panelHi), transparent), var(--inputBg);
@@ -262,6 +262,17 @@
     border-radius:9px; padding:10px 12px; font-size:14px; color:var(--text); font-family:inherit;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.3);}
   .sheet textarea{resize:vertical; min-height:70px;}
+  /* ---- issue groups ---- */
+  #groupsView{flex:1; overflow-y:auto; padding:10px 14px 90px; display:none; -webkit-overflow-scrolling:touch;}
+  #grpChart{display:block; width:100%; height:auto;}
+  .grp-card{margin-bottom:8px; padding:9px 12px; border-radius:12px; border:1px solid var(--border); border-left:3px solid var(--accent);
+    background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);}
+  .grp-card.sel{border-color:rgba(55,214,196,.7); box-shadow:0 0 14px rgba(55,214,196,.18);}
+  .grp-hdr{display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:13px; margin-bottom:2px;}
+  .grp-hdr .n{font-family:var(--mono); color:var(--accent);}
+  .grp-words{font-size:10px; color:var(--muted); line-height:1.4; margin-bottom:6px;}
+  .grp-desc{display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--subtext); padding:3px 0; border-top:1px dashed rgba(255,255,255,.06);}
+  .grp-desc .n{font-family:var(--mono); color:var(--text); flex-shrink:0;} .grp-desc.none{color:var(--muted);}
   .cchips{margin:-2px 0 10px;}
   .cchip{flex:1 1 auto; white-space:nowrap; text-align:center; padding:5px 6px; border-radius:20px; font-size:10.5px; font-weight:700;
     background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
@@ -347,11 +358,11 @@
     <div class="brand">
       <div class="icon">📡</div>
       <div class="titles">
-        <div class="t1">OPS Site Acceptance</div>
-        <div class="t2" id="syncBadge">ALARM TRACKING</div>
+        <div class="t1">OPS Site Issue Acceptance</div>
+        <div class="t2" id="syncBadge">LOCAL ONLY</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:8px;">
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
       <button id="userChip" style="background:var(--inputBg); border:1px solid var(--border); border-radius:20px;
         padding:6px 12px; font-size:11px; font-weight:700; color:var(--accent); max-width:110px;
         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">👤 ...</button>
@@ -387,14 +398,28 @@
     <div class="cchip" data-cat-filter="Not set">Not set</div>
   </div>
   <div class="plan-badge" id="planBadge"><span id="planBadgeText"></span><button id="planBadgeClear" title="Clear plan date filter">✕</button></div>
+  <div class="plan-badge" id="groupBadge"><span id="groupBadgeText"></span><button id="groupBadgeClear" title="Clear group filter">✕</button></div>
   <div class="tabs">
     <div class="tab active" data-view="list">List</div>
     <div class="tab" data-view="map">Mind Map</div>
     <div class="tab" data-view="plan">Plan</div>
+    <div class="tab" data-view="groups">Groups</div>
   </div>
 </div>
 
 <div id="listView"></div>
+
+<div id="groupsView">
+  <label class="mini">ISSUES BY GROUP</label>
+  <div class="plan-summary" id="grpSummary"></div>
+  <div class="plan-card">
+    <div class="plan-legend" id="grpLegend"></div>
+    <svg id="grpChart"></svg>
+    <div class="plan-note">Tap a bar to show only that group in the List, Mind Map and exports. Tap it again to clear. The chart follows your other filters.</div>
+  </div>
+  <label class="mini" style="margin-top:12px;">WHAT IS IN EACH GROUP</label>
+  <div id="grpMapping"></div>
+</div>
 
 <div id="planView">
   <label class="mini">QUERY BY PLAN DATE</label>
@@ -553,7 +578,7 @@
   <div class="sheet">
     <h3>Manage Users (Admin)</h3>
     <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
-      Only names added here can sign in to this app. ZASSSAH (Sadmin) can always sign in.
+      Only names added here can sign in to this app. The admin can always sign in.
     </div>
     <div id="approvedUsersList" style="margin-bottom:12px;"></div>
     <label>ADD NEW USER</label>
@@ -842,9 +867,10 @@ function getSiteList(){
   });
   return Object.keys(set).sort();
 }
-function getVisible(ignorePlan){
+function getVisible(ignorePlan, ignoreGroup){
   return issues.filter(function(i){
     if(!ignorePlan && !planMatch(i)) return false;
+    if(!ignoreGroup && groupFilter!=="Any" && issueGroup(i)!==groupFilter) return false;
     if(categoryFilter!=="Any"){
       var cat = i.category || "";
       if(categoryFilter==="Not set" ? cat!=="" : cat!==categoryFilter) return false;
@@ -906,7 +932,7 @@ function renderList(){
       return '<div class="tl-item"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
     }).join("") + '</div>' : '';
     return '<div class="irow-details">'+
-      '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+(iss.category ? ' · '+esc(iss.category) : '')+'</div>'+
+      '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+(iss.category ? ' · '+esc(iss.category) : '')+' · Group: '+esc(issueGroup(iss))+'</div>'+
       '<div class="full">'+esc(iss.issue)+'</div>'+tl+'</div>';
   }
   function rowHtml(iss){
@@ -1038,6 +1064,103 @@ function todayStr(){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
 }
 function isOverdue(iss){ return !!iss.planDate && iss.status!=="Resolved" && iss.planDate < todayStr(); }
+// ───────────────────────── issue groups (rules — edit here) ─────────────────────────
+// GROUPS-BEGIN
+// Every issue is put in a group from the words in its description. Going top to bottom, the FIRST group that has
+// one of its words in the description wins. Words match whole words only and ignore upper/lower case
+// ("temp" matches "High Temp 40C" but not "Attempt"). An issue that matches nothing goes to the last group, "Other".
+// To change the grouping: edit the words below and upload the file again — nothing else needs to change.
+var ISSUE_GROUPS = [
+  { name:"External alarm", words:["external alarm", "rect", "rectifier", "temp", "temperature", "battery stolen", "spd", "pmu"] },
+  { name:"Power issue",    words:["main power", "mains power", "power failure", "ac input", "dc input", "low voltage", "power supply", "power connector"] },
+  { name:"Hardware issue", words:["gnss", "board", "clock", "canbus", "rtwp", "rssi", "gain", "interference noise"] },
+  { name:"Cable/SFP",      words:["cpri", "ald", "maintenance link", "optical", "sfp", "interface"] },
+  { name:"Cell Down",      words:["cell blocked", "cell block", "cell unusable", "cell unavailable"] },
+  { name:"Other",          words:[] }
+];
+// GROUPS-END
+var GROUP_RES = ISSUE_GROUPS.map(function(g){
+  return g.words.map(function(w){
+    var esc_ = w.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    return new RegExp("(^|[^a-z0-9])" + esc_ + "($|[^a-z0-9])", "i");
+  });
+});
+var groupCache = {};
+function issueGroup(iss){
+  var t = iss.issue || "";
+  if(groupCache[t] !== undefined) return groupCache[t];
+  var found = ISSUE_GROUPS[ISSUE_GROUPS.length-1].name;
+  outer: for(var i=0; i<GROUP_RES.length; i++){
+    for(var k=0; k<GROUP_RES[i].length; k++){
+      if(GROUP_RES[i][k].test(t)){ found = ISSUE_GROUPS[i].name; break outer; }
+    }
+  }
+  groupCache[t] = found;
+  return found;
+}
+var groupFilter = "Any";
+function setGroupFilter(v){ groupFilter = (groupFilter===v) ? "Any" : v; refreshAll(true); }
+function renderGroupBadge(){
+  var b = document.getElementById("groupBadge");
+  if(groupFilter==="Any"){ b.style.display = "none"; return; }
+  document.getElementById("groupBadgeText").textContent = "🏷 Group: "+groupFilter;
+  b.style.display = "flex";
+}
+document.getElementById("groupBadgeClear").addEventListener("click", function(){ groupFilter = "Any"; refreshAll(true); });
+
+function renderGroups(){
+  var base = getVisible(false, true);                         // every other filter applies; the group filter itself does not
+  var names = ISSUE_GROUPS.map(function(g){ return g.name; }), data = {};
+  names.forEach(function(n){ data[n] = { total:0, byStatus:{}, desc:{} }; });
+  base.forEach(function(i){
+    var d = data[issueGroup(i)];
+    d.total++; d.byStatus[i.status] = (d.byStatus[i.status]||0)+1; d.desc[i.issue] = (d.desc[i.issue]||0)+1;
+  });
+  var total = base.length, maxT = 1;
+  names.forEach(function(n){ maxT = Math.max(maxT, data[n].total); });
+  var other = data[names[names.length-1]].total;
+  document.getElementById("grpSummary").innerHTML = '<span class="plan-pill"><b>'+total+'</b> issues</span>'+
+    '<span class="plan-pill'+(other ? ' bad' : '')+'"><b>'+other+'</b> in '+esc(names[names.length-1])+'</span>';
+  document.getElementById("grpLegend").innerHTML = PLAN_STACK.map(function(st){
+    return '<span><i style="background:'+STATUS[st].color+'"></i>'+st+'</span>';
+  }).join("");
+
+  var svg = document.getElementById("grpChart"); svg.innerHTML = "";
+  var ROW = 38, W = 360, LBL = 112, barX = LBL, barMax = W - LBL - 58, H = ROW*names.length + 8;
+  svg.setAttribute("viewBox", "0 0 "+W+" "+H);
+  names.forEach(function(n, idx){
+    var y = 4 + idx*ROW, d = data[n], sel = groupFilter===n, dim = (groupFilter!=="Any" && !sel) ? 0.32 : 1;
+    if(sel) svg.appendChild(svgEl("rect",{x:0, y:y+1, width:W, height:ROW-2, rx:9, fill:"rgba(55,214,196,.08)", stroke:"#37D6C4", "stroke-width":1.2}));
+    var lt = svgEl("text",{x:6, y:y+ROW/2+4, fill: sel ? "#37D6C4" : "#E7EEF9", "font-size":11.5, "font-weight":700, opacity:dim});
+    lt.textContent = n; svg.appendChild(lt);
+    svg.appendChild(svgEl("rect",{x:barX, y:y+9, width:barMax, height:20, rx:6, fill:"rgba(255,255,255,.05)", opacity:dim}));
+    var cx = barX;
+    PLAN_STACK.forEach(function(st){
+      var c = d.byStatus[st]||0; if(!c) return;
+      var w = barMax*c/maxT;
+      svg.appendChild(svgEl("rect",{x:cx, y:y+9, width:Math.max(w,2), height:20, rx:4, fill:STATUS[st].color, opacity:dim, stroke:"#0B1322", "stroke-width":1}));
+      cx += w;
+    });
+    var ct = svgEl("text",{x:barX + barMax*d.total/maxT + 7, y:y+ROW/2+4, fill:"#E7EEF9", "font-size":11, "font-weight":800, "font-family":"var(--mono)", opacity:dim});
+    ct.textContent = d.total + (total ? "  "+Math.round(100*d.total/total)+"%" : "");
+    svg.appendChild(ct);
+    var hit = svgEl("rect",{x:0, y:y, width:W, height:ROW, fill:"transparent", style:"cursor:pointer"});
+    hit.addEventListener("click", function(){ setGroupFilter(n); });
+    svg.appendChild(hit);
+  });
+
+  document.getElementById("grpMapping").innerHTML = names.map(function(n, idx){
+    var d = data[n], words = ISSUE_GROUPS[idx].words;
+    var descs = Object.keys(d.desc).sort(function(a,b){ return d.desc[b]-d.desc[a] || (a<b ? -1 : 1); });
+    return '<div class="grp-card'+(groupFilter===n ? ' sel' : '')+'">'+
+      '<div class="grp-hdr"><span>'+esc(n)+'</span><span class="n">'+d.total+'</span></div>'+
+      '<div class="grp-words">'+(words.length ? 'Words: '+words.map(esc).join(", ") : 'Everything that matches no other group')+'</div>'+
+      (descs.length ? descs.map(function(x){ return '<div class="grp-desc"><span>'+esc(x)+'</span><span class="n">×'+d.desc[x]+'</span></div>'; }).join("")
+                    : '<div class="grp-desc none">No issues</div>')+
+    '</div>';
+  }).join("");
+}
+
 // ───────────────────────── plan date: query + chart ─────────────────────────
 // All dates are "YYYY-MM-DD" strings, and day arithmetic is done in UTC, so a date can
 // never slip across a daylight-saving change or a time zone.
@@ -1519,9 +1642,14 @@ function fitToScreen(){
   var w = (e.x2-e.x1)+2*pad, h = (e.y2-e.y1)+2*pad;
   var svg = document.getElementById("mapSvg");
   var cw = svg.clientWidth||360, ch = svg.clientHeight||500;
-  zoom = Math.max(minZoom, Math.min(Math.min(cw/w, ch/h), 1.3));
+  // The legend floats over the top of the map, so frame the drawing in the space BELOW it:
+  // otherwise the topmost issue can end up hidden under the legend where it can't be tapped.
+  var leg = document.querySelector(".map-legend"), reserve = 0;
+  if(leg){ reserve = Math.max(0, leg.getBoundingClientRect().bottom - svg.getBoundingClientRect().top + 6); }
+  var chEff = Math.max(120, ch - reserve);
+  zoom = Math.max(minZoom, Math.min(Math.min(cw/w, chEff/h), 1.3));
   panX = -((e.x1+e.x2)/2)*zoom;
-  panY = -((e.y1+e.y2)/2)*zoom;
+  panY = -((e.y1+e.y2)/2)*zoom + reserve/2;
   renderMap();
 }
 
@@ -1735,7 +1863,7 @@ function drawCenter(nodesG, count){
   var icon = svgEl("text",{x:0,y:-16,"text-anchor":"middle","font-size":20});
   icon.textContent = "📡"; nodesG.appendChild(icon);
   var t1 = svgEl("text",{x:0,y:6,"text-anchor":"middle",fill:"#F2F6FC","font-size":12,"font-weight":700});
-  t1.textContent = "Site Acceptance Alarm Map"; nodesG.appendChild(t1);
+  t1.textContent = "OPS Site Issue Acceptance"; nodesG.appendChild(t1);
   var t2 = svgEl("text",{x:0,y:26,"text-anchor":"middle",fill:"#9FB0C8","font-size":9,"font-family":"var(--mono)"});
   t2.textContent = count+" tracked issue"+(count!==1?"s":""); nodesG.appendChild(t2);
 }
@@ -1799,7 +1927,7 @@ function showDetail(){
   var iss = issues.find(function(i){ return i.id===selectedId; });
   if(!iss){ bar.classList.remove("show"); syncDetailOpen(); return; }
   document.getElementById("detailTxt").innerHTML =
-    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.category ? " · "+esc(iss.category) : "")+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
+    "<b>"+iss.id+"</b> · "+esc(iss.site)+" · "+getRegion(iss.site)+" · <b>"+iss.status.toUpperCase()+"</b> · by "+esc(iss.owner||"Unknown")+(iss.category ? " · "+esc(iss.category) : "")+" · "+esc(issueGroup(iss))+(iss.planDate ? " · 📅 plan "+fmtPlan(iss.planDate)+(isOverdue(iss)?" (overdue)":"") : "")+"<br>"+esc(iss.issue);
   var b1 = document.getElementById("detailToggle"), b2 = document.getElementById("detailToggle2");
   function setBtn(btn, act, label, cls){ btn.textContent = label; btn.setAttribute("data-status-act", act); btn.className = cls; }
   if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
@@ -1923,7 +2051,7 @@ document.getElementById("formSave").addEventListener("click", function(){
     showToast(editingId+" updated");
   }else{
     var iss = addIssue(site, text, planDate, formCategory);
-    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" }; setCategoryFilter("Any");
+    filter="All"; siteFilter="All Sites"; regionFilter="All Regions"; search=""; planFilter = { mode:"all", from:"", to:"" }; setCategoryFilter("Any"); groupFilter = "Any";
     document.getElementById("searchInput").value="";
     document.getElementById("siteSelect").value="All Sites";
     setActiveChip("All");
@@ -2055,9 +2183,11 @@ Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
     document.getElementById("listView").style.display = view==="list" ? "block" : "none";
     document.getElementById("mapView").style.display = view==="map" ? "block" : "none";
     document.getElementById("planView").style.display = view==="plan" ? "block" : "none";
+    document.getElementById("groupsView").style.display = view==="groups" ? "block" : "none";
     syncDetailOpen();
     if(view==="map") fitToScreen();
     if(view==="plan") renderPlan();
+    if(view==="groups") renderGroups();
   });
 });
 
@@ -2077,35 +2207,35 @@ function download(filename, blob){
 }
 document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
-  var lines = ["ID,Site,Region,Issue,Category,Status,Plan Date,Logged At"];
+  var lines = ["ID,Site,Region,Issue,Category,Issue Group,Status,Plan Date,Logged At"];
   rows.forEach(function(iss){
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
-    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", iss.status, iss.planDate||"", d];
+    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", issueGroup(iss), iss.status, iss.planDate||"", d];
     lines.push(vals.join(","));
   });
-  download("site_acceptance_alarms.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
+  download("ops_site_issue_acceptance.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
   showToast("Exported "+rows.length+" issues to CSV");
 });
 document.getElementById("mBackup").addEventListener("click", function(){
   // Always backs up EVERYTHING, ignoring any active filter/search —
   // a backup should be a full snapshot, not a partial view.
   var payload = {
-    app: "Site Acceptance Alarm Tracking", backupVersion: 1, exportedAt: new Date().toISOString(),
+    app: "OPS Site Issue Acceptance", backupVersion: 1, exportedAt: new Date().toISOString(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
         ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "", category: iss.category || "" };
     })
   };
   var stamp = new Date().toISOString().slice(0,10);
-  download("site_acceptance_alarmtracking_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
+  download("ops_site_issue_acceptance_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
-var ADMIN_NAME = "ZASSSAH";
+var ADMIN_NAME = "ZASSSAH";      // the only place the admin name is written (always upper case)
 function isAdmin(){
   return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
 }
 document.getElementById("mRestore").addEventListener("click", function(){
-  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can restore from backup"); return; }
+  if(!isAdmin()){ showToast("Only the admin can restore from backup"); return; }
   document.getElementById("restoreFileInput").click();
 });
 document.getElementById("restoreFileInput").addEventListener("change", function(e){
@@ -2337,6 +2467,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Category</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Issue Group</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Status</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Plan Date</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Owner</Data></Cell>'+
@@ -2359,6 +2490,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
       '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.issue)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.category||"")+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+esc(issueGroup(iss))+'</Data></Cell>'+
       '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(iss.status)+'</Data></Cell>'+
       (iss.planDate ? '<Cell ss:StyleID="date"><Data ss:Type="DateTime">'+iss.planDate+'T00:00:00.000</Data></Cell>'
                     : '<Cell><Data ss:Type="String"></Data></Cell>')+
@@ -2406,7 +2538,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Style ss:ID="date"><NumberFormat ss:Format="yyyy-mm-dd"/></Style>\n</Styles>\n'+
     '<Worksheet ss:Name="Site Issues"><Table>\n'+rowsXml.join("\n")+'\n</Table></Worksheet>\n'+
     '<Worksheet ss:Name="Progress History"><Table>\n'+progRowsXml.join("\n")+'\n</Table></Worksheet>\n</Workbook>';
-  download("site_acceptance_alarms.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
+  download("ops_site_issue_acceptance.xls", new Blob([xml], {type:"application/vnd.ms-excel"}));
   showToast("Exported "+rows.length+" issues + "+totalProgressEntries+" progress entries");
 });
 document.getElementById("mSvg").addEventListener("click", function(){
@@ -2503,11 +2635,13 @@ function refreshAll(refit){
   refreshStats();
   renderList();
   renderPlanBadge();
+  renderGroupBadge();
   showDetail();
   if(view==="map"){
     if(refit) fitToScreen(); else renderMap();
   }
   if(view==="plan") renderPlan();
+  if(view==="groups") renderGroups();
 }
 
 // ───────────────────────── username ─────────────────────────
@@ -2526,7 +2660,7 @@ function clearUsername(){
   try{ localStorage.removeItem(USER_KEY); }catch(e){}
 }
 
-// Checks whether `name` is allowed to sign in. ZASSSAH (admin) is always
+// Checks whether `name` is allowed to sign in. The admin is always
 // allowed. Everyone else must already be in the admin-managed approved
 // list — but only when Firebase sync is on, since that list only makes
 // sense as something shared across everyone. In local-only mode (no
@@ -2571,7 +2705,7 @@ document.getElementById("userSave").addEventListener("click", function(){
     saveBtn.textContent = "Continue";
     saveBtn.disabled = false;
     if(!allowed){
-      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask admin to add you first.");
+      errEl.textContent = errMsg || ("\""+name+"\" isn't authorized yet. Ask the admin to add you first.");
       errEl.style.display = "block";
       return;
     }
@@ -2620,7 +2754,7 @@ function renderApprovedUsersList(){
   });
 }
 document.getElementById("mManageUsers").addEventListener("click", function(){
-  if(!isAdmin()){ showToast("Only admin ("+ADMIN_NAME+") can manage users"); return; }
+  if(!isAdmin()){ showToast("Only the admin can manage users"); return; }
   document.getElementById("newUserNameInput").value = "";
   renderApprovedUsersList();
   manageUsersOverlay.classList.add("show");
@@ -2635,7 +2769,7 @@ document.getElementById("addUserBtn").addEventListener("click", function(){
   if(!name){ showToast("Enter a name first"); return; }
   var normalized = name.toUpperCase();
   db.collection(USERS_COLLECTION).doc(normalized).set({
-    displayName: name, addedBy: currentUser||ADMIN_NAME, addedAt: Date.now()
+    displayName: name, addedBy: "admin", addedAt: Date.now()
   }).then(function(){
     document.getElementById("newUserNameInput").value = "";
     showToast(name+" added");
@@ -2743,7 +2877,7 @@ loadAll();
 loadUsername();
 refreshAll(true);
 document.getElementById("syncBadge").textContent = FIREBASE_ENABLED
-  ? "🟢 LIVE — SHARED WITH EVERYONE" : "ALARM TRACKING (LOCAL ONLY)";
+  ? "🟢 LIVE — SHARED WITH EVERYONE" : "LOCAL ONLY";
 if(currentUser){
   document.getElementById("userChip").textContent = "👤 "+currentUser;
   // Re-validate in the background in case an admin removed this user since
