@@ -265,6 +265,18 @@
   /* ---- issue groups ---- */
   #groupsView{flex:1; overflow-y:auto; padding:10px 14px 90px; display:none; -webkit-overflow-scrolling:touch;}
   #grpChart{display:block; width:100%; height:auto;}
+  .grp-maphead{display:flex; justify-content:space-between; align-items:center; margin:12px 0 6px;}
+  .grp-maphead .mini{margin:0;}
+  #grpEditToggle{padding:6px 12px; border-radius:16px; border:1px solid rgba(55,214,196,.5); background:rgba(55,214,196,.10); color:var(--accent); font-size:11px; font-weight:800;}
+  .wchips{display:flex; flex-wrap:wrap; gap:5px; margin:4px 0 8px;}
+  .wchip{display:inline-flex; align-items:center; padding:2px 2px 2px 9px; border-radius:14px; background:var(--inputBg); border:1px solid var(--border); font-size:11px; color:var(--text); max-width:100%; overflow-wrap:anywhere;}
+  .wchip button{background:none; border:none; color:var(--danger); font-weight:800; font-size:12px; padding:2px 7px;}
+  .wadd{display:flex; gap:6px; margin-bottom:6px;}
+  .wadd input{flex:1; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--inputBg); color:var(--text); font-size:12px; color-scheme:dark;}
+  .wadd button{padding:8px 14px; border-radius:10px; border:none; background:linear-gradient(180deg,#4EE8D6,var(--accent)); color:#06211D; font-weight:800; font-size:12px;}
+  .assign-sel{font-size:11px; padding:4px 6px; max-width:118px; border-radius:8px; border:1px solid var(--border); background:var(--inputBg); color:var(--accent); color-scheme:dark;}
+  .grp-desc .right{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .grp-reset{display:block; width:100%; margin-top:4px; padding:10px; border-radius:10px; border:1px solid rgba(251,111,141,.4); background:rgba(251,111,141,.08); color:var(--danger); font-size:12px; font-weight:700;}
   .grp-card{margin-bottom:8px; padding:9px 12px; border-radius:12px; border:1px solid var(--border); border-left:3px solid var(--accent);
     background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);}
   .grp-card.sel{border-color:rgba(55,214,196,.7); box-shadow:0 0 14px rgba(55,214,196,.18);}
@@ -417,8 +429,9 @@
     <svg id="grpChart"></svg>
     <div class="plan-note">Tap a bar to show only that group in the List, Mind Map and exports. Tap it again to clear. The chart follows your other filters.</div>
   </div>
-  <label class="mini" style="margin-top:12px;">WHAT IS IN EACH GROUP</label>
+  <div class="grp-maphead"><label class="mini">WHAT IS IN EACH GROUP</label><button id="grpEditToggle" style="display:none">✎ Edit words</button></div>
   <div id="grpMapping"></div>
+  <div id="grpResetWrap" style="display:none"><button class="grp-reset" id="grpReset">Reset all groups to the built-in words</button></div>
 </div>
 
 <div id="planView">
@@ -709,10 +722,14 @@ function loadAll(){
 function initFirestoreSync(){
   db.collection(COLLECTION).onSnapshot(function(snapshot){
     issues = [];
+    var sharedWords;                     // undefined = nobody has changed the group words
     snapshot.forEach(function(doc){
       var d = doc.data();
+      if(doc.id === RULES_DOC){ sharedWords = d && d.words; return; }     // the shared group words — not an issue
       issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown", planDate: normPlanDate(d.planDate), category: normCategory(d.category) });
     });
+    if(sharedWords && typeof sharedWords==="object"){ applyGroupWords(sharedWords); cacheGroupRules(currentWordMap()); }
+    else{ applyGroupWords(null); cacheGroupRules(null); }
     // Don't auto-refit the map on every remote change — that would yank
     // your zoom/pan out from under you mid-edit. Use the Fit button if needed.
     refreshAll(false);
@@ -1079,13 +1096,39 @@ var ISSUE_GROUPS = [
   { name:"Other",          words:[] }
 ];
 // GROUPS-END
-var GROUP_RES = ISSUE_GROUPS.map(function(g){
-  return g.words.map(function(w){
-    var esc_ = w.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-    return new RegExp("(^|[^a-z0-9])" + esc_ + "($|[^a-z0-9])", "i");
+var GROUP_RES = [], groupCache = {};
+var DEFAULT_WORDS = ISSUE_GROUPS.map(function(g){ return g.words.slice(); });    // the words written above
+var RULES_DOC = "_group_rules";            // the shared settings document (lives beside the issues; never shown as an issue)
+var RULES_LS = "sitetrack_grouprules_v1";  // this phone's copy: instant start-up, and the store when sync is off
+function cleanWord(w){ return String(w||"").toLowerCase().replace(/\s+/g, " ").trim(); }
+function buildGroupRegexes(){
+  GROUP_RES = ISSUE_GROUPS.map(function(g){
+    return g.words.map(function(w){
+      var esc_ = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+      return new RegExp("(^|[^a-z0-9])" + esc_ + "($|[^a-z0-9])", "i");
+    });
   });
-});
-var groupCache = {};
+  groupCache = {};
+}
+// map = { "Group name": [words…] }, or null for the built-in words. Stored data is untrusted, so it is cleaned.
+function applyGroupWords(map){
+  ISSUE_GROUPS.forEach(function(g, i){
+    var last = (i === ISSUE_GROUPS.length-1);
+    var list = (map && Array.isArray(map[g.name])) ? map[g.name] : DEFAULT_WORDS[i], seen = {}, out = [];
+    if(!last) list.forEach(function(w){ w = cleanWord(w); if(w.length>=3 && w.length<=120 && !seen[w]){ seen[w] = 1; out.push(w); } });
+    g.words = out.slice(0, 300);                 // "Other" never has words: it is what is left over
+  });
+  buildGroupRegexes();
+}
+function currentWordMap(){ var m = {}; ISSUE_GROUPS.forEach(function(g){ m[g.name] = g.words.slice(); }); return m; }
+function loadGroupRules(){
+  var map = null;
+  try{ var raw = localStorage.getItem(RULES_LS); if(raw) map = JSON.parse(raw); }catch(e){ map = null; }
+  applyGroupWords(map);
+}
+function cacheGroupRules(map){
+  try{ if(map) localStorage.setItem(RULES_LS, JSON.stringify(map)); else localStorage.removeItem(RULES_LS); }catch(e){}
+}
 function issueGroup(iss){
   var t = iss.issue || "";
   if(groupCache[t] !== undefined) return groupCache[t];
@@ -1097,6 +1140,64 @@ function issueGroup(iss){
   }
   groupCache[t] = found;
   return found;
+}
+buildGroupRegexes();
+// ---- editing the words on the page (admin only) ----
+var grpEditMode = false, grpDraft = {};
+function groupSnapshot(){ var m = {}; issues.forEach(function(i){ m[i.id] = issueGroup(i); }); return m; }
+function countMoved(before){ var n = 0; issues.forEach(function(i){ if(before[i.id] !== issueGroup(i)) n++; }); return n; }
+// Applies a new set of words everywhere at once; if the shared save is refused, puts everything back as it was.
+function saveGroupRules(newMap, message){
+  var prev = currentWordMap();
+  applyGroupWords(newMap); cacheGroupRules(currentWordMap());
+  refreshAll(false);
+  if(message) showToast(message);
+  if(FIREBASE_ENABLED){
+    db.collection(COLLECTION).doc(RULES_DOC).set({ words: currentWordMap(), updatedBy: currentUser||"", updatedAt: Date.now() })
+      .catch(function(err){
+        console.error(err);
+        applyGroupWords(prev); cacheGroupRules(prev); refreshAll(false);
+        showToast("Couldn't save for everyone — nothing was changed");
+      });
+  }
+}
+function resetGroupRules(){
+  var prev = currentWordMap(), before = groupSnapshot();
+  applyGroupWords(null); cacheGroupRules(null);
+  var moved = countMoved(before);
+  refreshAll(false);
+  showToast("Groups reset to the built-in words — "+moved+" issue"+(moved!==1?"s":"")+" moved");
+  if(FIREBASE_ENABLED){
+    db.collection(COLLECTION).doc(RULES_DOC).delete().catch(function(err){
+      console.error(err); applyGroupWords(prev); cacheGroupRules(prev); refreshAll(false);
+      showToast("Couldn't reset for everyone — nothing was changed");
+    });
+  }
+}
+function groupIndex(name){ for(var i=0;i<ISSUE_GROUPS.length;i++) if(ISSUE_GROUPS[i].name===name) return i; return -1; }
+function addGroupWord(groupName, raw){
+  if(!isAdmin()){ showToast("Only the admin can change the groups"); return false; }
+  var gi = groupIndex(groupName), w = cleanWord(raw);
+  if(gi < 0 || gi === ISSUE_GROUPS.length-1) return false;
+  if(w.length < 3){ showToast("Use at least 3 letters so it can't match too much"); return false; }
+  if(w.length > 120){ showToast("That's too long — use a shorter word or phrase"); return false; }
+  var map = currentWordMap();
+  if(map[groupName].indexOf(w) !== -1){ showToast("“"+w+"” is already in "+groupName); return false; }
+  var others = ISSUE_GROUPS.filter(function(g, i){ return i!==gi && g.words.indexOf(w)!==-1; }).map(function(g){ return g.name; });
+  var before = groupSnapshot();
+  map[groupName].push(w);
+  var probe = currentWordMap(); applyGroupWords(map);                     // measure the effect…
+  var moved = countMoved(before); applyGroupWords(probe);                 // …then let saveGroupRules apply it for real
+  saveGroupRules(map, "Added “"+w+"” to "+groupName+" — "+moved+" issue"+(moved!==1?"s":"")+" moved"+(others.length ? ". It is also in "+others.join(", ")+"; the group higher in the list wins" : ""));
+  return true;
+}
+function removeGroupWord(groupName, word){
+  if(!isAdmin()){ showToast("Only the admin can change the groups"); return; }
+  var map = currentWordMap(), list = map[groupName]; if(!list) return;
+  var k = list.indexOf(word); if(k < 0) return;
+  var before = groupSnapshot(); list.splice(k, 1);
+  var probe = currentWordMap(); applyGroupWords(map); var moved = countMoved(before); applyGroupWords(probe);
+  saveGroupRules(map, "Removed “"+word+"” from "+groupName+" — "+moved+" issue"+(moved!==1?"s":"")+" moved");
 }
 var groupFilter = "Any";
 function setGroupFilter(v){ groupFilter = (groupFilter===v) ? "Any" : v; refreshAll(true); }
@@ -1149,17 +1250,61 @@ function renderGroups(){
     svg.appendChild(hit);
   });
 
-  document.getElementById("grpMapping").innerHTML = names.map(function(n, idx){
-    var d = data[n], words = ISSUE_GROUPS[idx].words;
+  var admin = isAdmin(), editing = admin && grpEditMode;
+  var tog = document.getElementById("grpEditToggle"); tog.style.display = admin ? "" : "none"; tog.textContent = editing ? "✓ Done" : "✎ Edit words";
+  document.getElementById("grpResetWrap").style.display = editing ? "" : "none";
+  var mapEl = document.getElementById("grpMapping"), ae = document.activeElement;
+  var focusG = (ae && ae.classList && ae.classList.contains("wadd-input")) ? ae.getAttribute("data-g") : null;   // keep typing across refreshes
+  var optHtml = names.slice(0, names.length-1).map(function(g){ return '<option value="'+esc(g)+'">'+esc(g)+'</option>'; }).join("");
+  mapEl.innerHTML = names.map(function(n, idx){
+    var d = data[n], words = ISSUE_GROUPS[idx].words, isOther = idx===names.length-1;
     var descs = Object.keys(d.desc).sort(function(a,b){ return d.desc[b]-d.desc[a] || (a<b ? -1 : 1); });
+    var wordsHtml;
+    if(isOther){
+      wordsHtml = '<div class="grp-words">Everything that matches no other group'+(editing ? ' — pick “Move to…” on a description to give it a group.' : '')+'</div>';
+    }else if(editing){
+      wordsHtml = '<div class="wchips">'+(words.length ? words.map(function(w){
+        return '<span class="wchip">'+esc(w)+'<button type="button" data-g="'+esc(n)+'" data-w="'+esc(w)+'" aria-label="Remove '+esc(w)+'">✕</button></span>';
+      }).join("") : '<span class="grp-words">No words yet</span>')+'</div>'+
+      '<div class="wadd"><input class="wadd-input" data-g="'+esc(n)+'" placeholder="add a word or phrase" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"><button type="button" data-addfor="'+esc(n)+'">Add</button></div>';
+    }else{
+      wordsHtml = '<div class="grp-words">'+(words.length ? 'Words: '+words.map(esc).join(", ") : 'No words')+'</div>';
+    }
+    var rows = descs.length ? descs.map(function(x){
+      return '<div class="grp-desc"><span>'+esc(x)+'</span><span class="right">'+
+        (isOther && editing ? '<select class="assign-sel" data-desc="'+esc(x)+'"><option value="">Move to…</option>'+optHtml+'</select>' : '')+
+        '<span class="n">×'+d.desc[x]+'</span></span></div>';
+    }).join("") : '<div class="grp-desc none">No issues</div>';
     return '<div class="grp-card'+(groupFilter===n ? ' sel' : '')+'">'+
-      '<div class="grp-hdr"><span>'+esc(n)+'</span><span class="n">'+d.total+'</span></div>'+
-      '<div class="grp-words">'+(words.length ? 'Words: '+words.map(esc).join(", ") : 'Everything that matches no other group')+'</div>'+
-      (descs.length ? descs.map(function(x){ return '<div class="grp-desc"><span>'+esc(x)+'</span><span class="n">×'+d.desc[x]+'</span></div>'; }).join("")
-                    : '<div class="grp-desc none">No issues</div>')+
-    '</div>';
+      '<div class="grp-hdr"><span>'+esc(n)+'</span><span class="n">'+d.total+'</span></div>'+wordsHtml+rows+'</div>';
   }).join("");
+  Array.prototype.forEach.call(mapEl.querySelectorAll(".wchip button"), function(b){
+    b.addEventListener("click", function(){ removeGroupWord(b.getAttribute("data-g"), b.getAttribute("data-w")); });
+  });
+  Array.prototype.forEach.call(mapEl.querySelectorAll(".wadd"), function(box){
+    var inp = box.querySelector("input"), btn = box.querySelector("button"), g = inp.getAttribute("data-g");
+    inp.value = grpDraft[g] || "";
+    inp.addEventListener("input", function(){ grpDraft[g] = inp.value; });
+    inp.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); btn.click(); } });
+    btn.addEventListener("click", function(){
+      var typed = inp.value;
+      grpDraft[g] = "";                                   // clear first: adding redraws the screen, and the redraw restores the draft
+      if(!addGroupWord(g, typed)) grpDraft[g] = typed;    // refused (too short, already there…): keep what they typed so they can fix it
+    });
+  });
+  Array.prototype.forEach.call(mapEl.querySelectorAll(".assign-sel"), function(sel){
+    sel.addEventListener("change", function(){ if(sel.value) addGroupWord(sel.value, sel.getAttribute("data-desc")); });
+  });
+  if(focusG){
+    var again = mapEl.querySelector('.wadd-input[data-g="'+focusG.replace(/"/g,'\\"')+'"]');
+    if(again){ again.focus(); try{ again.setSelectionRange(again.value.length, again.value.length); }catch(e){} }
+  }
 }
+document.getElementById("grpEditToggle").addEventListener("click", function(){ grpEditMode = !grpEditMode; renderGroups(); });
+document.getElementById("grpReset").addEventListener("click", function(){
+  if(!isAdmin()){ showToast("Only the admin can change the groups"); return; }
+  if(confirm("Put every group back to the built-in words? Words you added on the page will be removed for everyone.")) resetGroupRules();
+});
 
 // ───────────────────────── plan date: query + chart ─────────────────────────
 // All dates are "YYYY-MM-DD" strings, and day arithmetic is done in UTC, so a date can
@@ -2873,6 +3018,7 @@ document.getElementById("planBadgeClear").addEventListener("click", function(){ 
 document.getElementById("planScroll").addEventListener("scroll", function(){ planScrollLeft = this.scrollLeft; });
 
 // ───────────────────────── init ─────────────────────────
+loadGroupRules();
 loadAll();
 loadUsername();
 refreshAll(true);
