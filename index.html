@@ -20,6 +20,7 @@
     --verify:#6EA8FF; --verifyFill:rgba(110,168,255,.18);
     --submitted:#C084FC; --submittedFill:rgba(192,132,252,.18);
   --cancelled:#8A94A6; --cancelledFill:rgba(138,148,166,.18);
+  --fresh:#FF7AB6; --freshFill:rgba(255,122,182,.16);
     --muted:#6B7E98; --text:#E7EEF9; --subtext:#9FB0C8; --inputBg:rgba(255,255,255,.05);
     --danger:#FB6F8D; --shadow:rgba(0,0,0,.55);
     --mono:"SF Mono",Consolas,"Cascadia Code",monospace;
@@ -57,18 +58,23 @@
   .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
   .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px; line-height:1.2;}
   .stat .sub{display:block; font-size:7.5px; letter-spacing:.2px; color:var(--cancelled); margin-top:1px; white-space:nowrap;}
+  .stat.fresh{background:var(--freshFill); border-color:rgba(255,122,182,.42);}
   .stat.open{background:var(--openFill); border-color:rgba(245,169,61,.35);}
   .stat.verify{background:var(--verifyFill); border-color:rgba(110,168,255,.4);}
   .stat.submitted{background:var(--submittedFill); border-color:rgba(192,132,252,.4);}
   .stat.resolved{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
   .stat.total{background:rgba(55,214,196,.14); border-color:rgba(55,214,196,.35);}
+  .stat.fresh .n{color:var(--fresh); text-shadow:0 0 12px rgba(255,122,182,.55);}
   .stat.open .n{color:var(--open); text-shadow:0 0 12px rgba(245,169,61,.5);}
   .stat.verify .n{color:var(--verify); text-shadow:0 0 12px rgba(110,168,255,.55);}
   .stat.submitted .n{color:var(--submitted); text-shadow:0 0 12px rgba(192,132,252,.55);}
   .stat.resolved .n{color:var(--closed); text-shadow:0 0 12px rgba(51,209,122,.5);}
   .stat.total .n{color:var(--accent); text-shadow:0 0 12px var(--accentGlow);}
-  /* five tiles share one row: tighten the labels on smaller phones (must stay after the rules above) */
-  @media (max-width:400px){ .stat .l{letter-spacing:.4px;} }
+  /* six tiles share one row: tighten the labels on smaller phones (must stay after the rules above) */
+  .stat .lshort{display:none;}
+  @media (max-width:430px){ .stat .lfull{display:none;} .stat .lshort{display:inline;} }      /* "SUBMITTED A85" -> "A85" */
+  @media (max-width:430px){ .stat .l{letter-spacing:.4px;} }
+  @media (max-width:380px){ .stat .l{font-size:7px; letter-spacing:.2px;} }
   @media (max-width:340px){ .stat{padding:6px 2px;} .stat .l{letter-spacing:.2px; font-size:7px;} }
 
   /* ---- controls ---- */
@@ -433,9 +439,10 @@
     </div>
   </div>
   <div class="stats">
-    <div class="stat open"><div class="n" id="statOpen">0</div><div class="l">OPEN</div></div>
+    <div class="stat fresh" title="Open issues created within the last 24 hours"><div class="n" id="statFresh">0</div><div class="l">NEW ROLL-IN</div></div>
+    <div class="stat open" title="Open issues created more than 24 hours ago"><div class="n" id="statOpen">0</div><div class="l">OPEN</div></div>
     <div class="stat verify"><div class="n" id="statVerify">0</div><div class="l">VERIFY</div></div>
-    <div class="stat submitted"><div class="n" id="statSubmitted">0</div><div class="l">SUBMITTED A85</div></div>
+    <div class="stat submitted"><div class="n" id="statSubmitted">0</div><div class="l"><span class="lfull">SUBMITTED A85</span><span class="lshort">A85</span></div></div>
     <div class="stat resolved"><div class="n" id="statResolved">0</div><div class="l">RESOLVED</div></div>
     <div class="stat total"><div class="n" id="statTotal">0</div><div class="l" id="statTotalLabel">TOTAL</div></div>
   </div>
@@ -1029,10 +1036,20 @@ function fmtTime(ts){
   if(s<86400) return Math.floor(s/3600)+"h ago";
   return Math.floor(s/86400)+"d ago";
 }
+// ── Time zone: every date the app shows or exports is in GMT+7 (Bangkok), whatever time zone the phone itself is set to ──
+var TZ_OFFSET_MS = 7*3600000;
+function bkk(ts){ return new Date(ts + TZ_OFFSET_MS); }          // read the result with the getUTC… methods
+function p2(n){ return (n<10 ? "0" : "")+n; }
+function stampOf(ts){                                             // "YYYY-MM-DD HH:MM:SS" in GMT+7
+  var d = bkk(ts);
+  return d.getUTCFullYear()+"-"+p2(d.getUTCMonth()+1)+"-"+p2(d.getUTCDate())+" "+p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())+":"+p2(d.getUTCSeconds());
+}
+function isoOf(ts){ return stampOf(ts).replace(" ","T")+"+07:00"; }
+function ymdOf(ts){ return stampOf(ts).slice(0,10); }
 function fmtDate(ts){
-  var d = new Date(ts);
+  var d = bkk(ts);
   var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return d.getDate()+" "+months[d.getMonth()];
+  return d.getUTCDate()+" "+months[d.getUTCMonth()];
 }
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
@@ -1212,9 +1229,9 @@ var FAN_CHORD = 92;       // typical spacing between neighbouring issue boxes in
 var LAYOUT_PAD = 14;      // clear gap the layout keeps between any two things on the map
 
 var WEEK_MS = 7*24*3600*1000;
-// Monday-based week bucket in the viewer's local time (so "week" matches a calendar week).
+// Monday-based week bucket in GMT+7 (so "week" matches a calendar week in Bangkok).
 function weekIndexOf(ts){
-  var local = ts - new Date(ts).getTimezoneOffset()*60000;
+  var local = ts + TZ_OFFSET_MS;
   return Math.floor((local - 4*86400000)/WEEK_MS);       // 1970-01-05 was a Monday
 }
 function isoWeekNumber(weekIdx){
@@ -1246,10 +1263,7 @@ function catTagHtml(cat){
   return '<span class="cat-tag '+key+'" title="Category: '+cat+'"><span class="full">'+cat.toUpperCase()+'</span><span class="short">'+(key==="ticket" ? "TICKET" : "FIX")+'</span></span>';
 }
 function fmtPlan(v){ return (+v.slice(8,10))+" "+MONTHS_SHORT[+v.slice(5,7)-1]+" "+v.slice(0,4); }
-function todayStr(){
-  var d = new Date(), p = function(n){ return (n<10?"0":"")+n; };
-  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
-}
+function todayStr(){ return ymdOf(Date.now()); }            // "today" is today in GMT+7
 function isOverdue(iss){ return !!iss.planDate && isOpenWork(iss.status) && iss.planDate < todayStr(); }
 // ───────────────────────── issue groups (rules — edit here) ─────────────────────────
 // GROUPS-BEGIN
@@ -2596,7 +2610,7 @@ document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
   var lines = ["ID,Site,Region,Priority,Issue,Category,Issue Group,Status,Plan Date,Logged At"];
   rows.forEach(function(iss){
-    var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
+    var d = stampOf(iss.ts);
     var vals = [iss.id, iss.site, getRegion(iss.site), isPriority(iss.site) ? "Yes" : "No", '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", issueGroup(iss), iss.status, iss.planDate||"", d];
     lines.push(vals.join(","));
   });
@@ -2607,14 +2621,14 @@ document.getElementById("mBackup").addEventListener("click", function(){
   // Always backs up EVERYTHING, ignoring any active filter/search —
   // a backup should be a full snapshot, not a partial view.
   var payload = {
-    app: "OPS Site Issue Acceptance", backupVersion: 1, exportedAt: new Date().toISOString(),
+    app: "OPS Site Issue Acceptance", backupVersion: 1, exportedAt: isoOf(Date.now()),
     prioritySites: Object.keys(prioSites).sort(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
         ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "", category: iss.category || "" };
     })
   };
-  var stamp = new Date().toISOString().slice(0,10);
+  var stamp = ymdOf(Date.now());
   download("ops_site_issue_acceptance_backup_"+stamp+".json", new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}));
   showToast("Backed up "+payload.issues.length+" issues");
 });
@@ -2900,12 +2914,12 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update By</Data></Cell></Row>'];
   rows.forEach(function(iss){
     var style = iss.status==="Open" ? "open" : (iss.status==="Verify" ? "verify" : (iss.status==="Submitted A85" ? "submitted" : (iss.status==="Cancelled" ? "cancelled" : "closed")));
-    var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
+    var d = stampOf(iss.ts);
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     var notes = prog.filter(function(p){ return !isStatusLog(p); });       // real progress notes only: status-toggle logs don't count
     var latest = notes.length>0 ? notes[notes.length-1] : null;           // the latest progress note
     var latestNote = latest ? latest.note : "";
-    var latestTime = latest ? new Date(latest.ts).toISOString().slice(0,19).replace("T"," ") : "";
+    var latestTime = latest ? stampOf(latest.ts) : "";
     var latestBy = latest ? (latest.by||"Unknown") : "";
     rowsXml.push("<Row>"+
       '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
@@ -2938,7 +2952,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
   rows.forEach(function(iss){
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     prog.forEach(function(p){
-      var pd = new Date(p.ts).toISOString().slice(0,19).replace("T"," ");
+      var pd = stampOf(p.ts);
       progRowsXml.push("<Row>"+
         '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
@@ -3050,7 +3064,12 @@ function refreshSiteSelect(){
   if(sites.indexOf(cur)<0){ siteFilter="All Sites"; sel.value="All Sites"; }
 }
 function refreshStats(){
-  var open = issues.filter(function(i){return i.status==="Open";}).length;
+  // New roll-in = an Open issue created 24 hours ago or less; Open = an Open issue older than that. The clock moves, so this is
+  // re-counted every minute (and when the app comes back to the front), not only when the data changes.
+  var nowMs = Date.now(), openAll = issues.filter(function(i){return i.status==="Open";});
+  var fresh = openAll.filter(function(i){ return (nowMs - i.ts) <= 24*3600*1000; }).length;
+  var open = openAll.length - fresh;
+  document.getElementById("statFresh").textContent = fresh;
   var verifying = issues.filter(function(i){return i.status==="Verify";}).length;
   var submitted = issues.filter(function(i){return i.status==="Submitted A85";}).length;
   var resolved = issues.filter(function(i){return i.status==="Resolved";}).length;
@@ -3380,6 +3399,8 @@ loadPrio();
 loadAll();
 loadUsername();
 refreshAll(true);
+setInterval(refreshStats, 60000);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) refreshStats(); });
 document.getElementById("syncBadge").textContent = FIREBASE_ENABLED
   ? "🟢 LIVE — SHARED WITH EVERYONE" : "LOCAL ONLY";
 if(currentUser && isAdminName(currentUser)){
