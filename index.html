@@ -201,6 +201,7 @@
   .tl-item{font-size:11px; color:var(--subtext); line-height:1.5; padding:4px 0; display:flex;
     align-items:flex-start; gap:6px;}
   .tl-item .tl-text{flex:1; min-width:0;}
+  .tl-item.status .tl-text{color:var(--muted); font-style:italic;}
   .tl-date{font-weight:700; color:var(--text); font-family:var(--mono);}
   .tl-actions{display:flex; gap:3px; flex-shrink:0;}
   .tl-actions button{width:22px; height:22px; border-radius:6px; border:1px solid var(--border);
@@ -867,7 +868,7 @@ function addIssue(site, text, planDate, category){
 }
 function addProgressNote(id, note){
   var now = Date.now();
-  var entry = { ts: now, note: note, by: currentUser || "Unknown" };
+  var entry = { ts: now, note: note, by: currentUser || "Unknown", kind: "note" };
   if(FIREBASE_ENABLED){
     db.collection(COLLECTION).doc(id).update({
       progress: firebase.firestore.FieldValue.arrayUnion(entry),
@@ -904,7 +905,7 @@ function updateIssueData(id, site, text, planDate, category){
 // same A85 decision at once.
 function changeStatus(id, from, to, note, doneMsg){
   var now = Date.now();
-  var entry = { ts: now, note: note, by: currentUser || "Unknown" };
+  var entry = { ts: now, note: note, by: currentUser || "Unknown", kind: "status" };
   if(FIREBASE_ENABLED){
     var ref = db.collection(COLLECTION).doc(id);
     db.runTransaction(function(tx){
@@ -1007,8 +1008,27 @@ function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 var TRASH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
 var expandedRows = {};          // rows whose details are open stay open across refreshes
 var STAGE_ORDER = ["Open","Verify","Submitted A85","Resolved"];
+// A STATUS LOG is the automatic entry written when someone toggles an issue's status (Verify, Pass/Fail, Reopen, Resolve all).
+// A PROGRESS NOTE is what a person types with the Progress button. Only progress notes count as an issue's "latest progress".
+// New entries carry an explicit kind ("status" / "note"). Entries saved before that have no marker, so they are recognised by the
+// fixed wording the app has always used for them (a person's own note is never matched by these: they all have a fixed shape).
+var STATUS_LOG_RES = [
+  /^sent for verification\.?$/i,
+  /^verif(y|ication) (passed|failed)\s*(→|->)/i,
+  /^a85 (passed|failed)\s*(→|->)/i,
+  /^reopened\.?$/i,
+  /^status changed to /i,
+  /^site resolved:/i
+];
+function isStatusLog(p){
+  if(p && p.kind === "status") return true;
+  if(p && p.kind === "note") return false;
+  var t = String((p && p.note) || "").trim();
+  return STATUS_LOG_RES.some(function(re){ return re.test(t); });
+}
+function progressNotes(iss){ return (iss.progress||[]).filter(function(p){ return !isStatusLog(p); }); }
 function latestUpdate(iss){
-  var p = (iss.progress||[]).slice().sort(function(a,b){ return b.ts-a.ts; })[0];
+  var p = progressNotes(iss).sort(function(a,b){ return b.ts-a.ts; })[0];
   return p ? { note:p.note, by:p.by||"—" } : null;
 }
 function renderList(){
@@ -1036,7 +1056,7 @@ function renderList(){
   function detailsHtml(iss, last){
     var progress = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     var tl = progress.length ? '<div class="timeline">' + progress.map(function(p){
-      return '<div class="tl-item"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
+      return '<div class="tl-item'+(isStatusLog(p) ? ' status' : '')+'"><span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span></div>';
     }).join("") + '</div>' : '';
     return '<div class="irow-details">'+
       '<div class="meta">Registered '+fmtDate(iss.ts)+' · '+fmtTime(iss.ts)+' · by '+esc(iss.owner||"Unknown")+(iss.category ? ' · '+esc(iss.category) : '')+' · Group: '+esc(issueGroup(iss))+'</div>'+
@@ -2392,7 +2412,7 @@ function renderProgressHistory(id){
     return;
   }
   hist.innerHTML = '<div class="timeline">'+list.map(function(p){
-    return '<div class="tl-item">'+
+    return '<div class="tl-item'+(isStatusLog(p) ? ' status' : '')+'">'+
       '<span class="tl-text"><span class="tl-date">'+fmtDate(p.ts)+'</span> '+esc(p.note)+' <i style="color:var(--muted);">— '+esc(p.by||"Unknown")+'</i></span>'+
       '<span class="tl-actions">'+
         '<button class="tl-edit" data-ts="'+p.ts+'" title="Edit">✎</button>'+
@@ -2423,7 +2443,7 @@ function editProgressEntry(id, ts, newNote){
   var iss = issues.find(function(i){ return i.id===id; });
   if(!iss) return;
   var newProgress = (iss.progress||[]).map(function(p){
-    return p.ts===ts ? { ts:p.ts, note:newNote, by:p.by||"Unknown" } : p;
+    if(p.ts!==ts) return p; var e = { ts:p.ts, note:newNote, by:p.by||"Unknown" }; if(p.kind) e.kind = p.kind; return e;
   });
   saveProgressArray(id, newProgress);
 }
@@ -2835,7 +2855,8 @@ document.getElementById("mExcel").addEventListener("click", function(){
     var style = iss.status==="Open" ? "open" : (iss.status==="Verify" ? "verify" : (iss.status==="Submitted A85" ? "submitted" : "closed"));
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
-    var latest = prog.length>0 ? prog[prog.length-1] : null;   // most recent timeline entry
+    var notes = prog.filter(function(p){ return !isStatusLog(p); });       // real progress notes only: status-toggle logs don't count
+    var latest = notes.length>0 ? notes[notes.length-1] : null;           // the latest progress note
     var latestNote = latest ? latest.note : "";
     var latestTime = latest ? new Date(latest.ts).toISOString().slice(0,19).replace("T"," ") : "";
     var latestBy = latest ? (latest.by||"Unknown") : "";
@@ -2852,7 +2873,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
                     : '<Cell><Data ss:Type="String"></Data></Cell>')+
       '<Cell><Data ss:Type="String">'+esc(iss.owner||"Unknown")+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(d)+'</Data></Cell>'+
-      '<Cell><Data ss:Type="Number">'+prog.length+'</Data></Cell>'+
+      '<Cell><Data ss:Type="Number">'+notes.length+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(latestNote)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(latestTime)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(latestBy)+'</Data></Cell></Row>');
@@ -2865,7 +2886,8 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Priority</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">By</Data></Cell>'+
-    '<Cell ss:StyleID="header"><Data ss:Type="String">Note</Data></Cell></Row>'];
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Note</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Type</Data></Cell></Row>'];
   rows.forEach(function(iss){
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     prog.forEach(function(p){
@@ -2877,7 +2899,8 @@ document.getElementById("mExcel").addEventListener("click", function(){
         '<Cell><Data ss:Type="String">'+(isPriority(iss.site) ? "Yes" : "No")+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(pd)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(p.by||"Unknown")+'</Data></Cell>'+
-        '<Cell><Data ss:Type="String">'+esc(p.note)+'</Data></Cell></Row>');
+        '<Cell><Data ss:Type="String">'+esc(p.note)+'</Data></Cell>'+
+        '<Cell><Data ss:Type="String">'+(isStatusLog(p) ? "Status change" : "Progress note")+'</Data></Cell></Row>');
     });
   });
   var totalProgressEntries = progRowsXml.length - 1;
@@ -3236,7 +3259,7 @@ function inChunks(items, size, worker){
 }
 function resolveSiteIssues(site, ids, note){
   var now = Date.now(), who = currentUser || "Unknown", text = "Site resolved: "+note;
-  var entry = function(){ return { ts:now, note:text, by:who }; };
+  var entry = function(){ return { ts:now, note:text, by:who, kind:"status" }; };
   if(FIREBASE_ENABLED){
     // one small transaction per issue: anything someone else already resolved is skipped, never double-logged
     return inChunks(ids, 25, function(id){
