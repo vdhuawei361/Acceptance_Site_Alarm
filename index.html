@@ -970,7 +970,7 @@ function getSiteList(){
   });
   return Object.keys(set).sort();
 }
-function getVisible(ignorePlan, ignoreGroup){
+function getVisible(ignorePlan, ignoreGroup, ignorePriority){
   return issues.filter(function(i){
     if(!ignorePlan && !planMatch(i)) return false;
     if(!ignoreGroup && groupFilter!=="Any" && issueGroup(i)!==groupFilter) return false;
@@ -978,7 +978,7 @@ function getVisible(ignorePlan, ignoreGroup){
       var cat = i.category || "";
       if(categoryFilter==="Not set" ? cat!=="" : cat!==categoryFilter) return false;
     }
-    if(priorityOnly && !isPriority(i.site)) return false;
+    if(priorityOnly && !ignorePriority && !isPriority(i.site)) return false;
     if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return false;
     if(siteFilter!=="All Sites" && i.site!==siteFilter) return false;
     if(filter!=="All" && i.status!==filter) return false;
@@ -1290,9 +1290,11 @@ function restorePriority(list){
     keys.forEach(function(k){ prioSites[k] = true; }); cachePrio(); refreshAll(false);
   }
 }
-// the flame button beside the search box: shows how many sites are flagged; tap to show only those sites
+// the flame button beside the search box: shows how many priority sites match the CURRENT filters (status, category, region,
+// search…) — exactly the sites the PRIORITY section lists — and tapping it shows only those. (The priority filter itself is left
+// out of the count, so the number doesn't jump when you press the button.)
 function renderPrioFilter(){
-  var seen = {}; issues.forEach(function(i){ if(isPriority(i.site)) seen[siteKey(i.site)] = 1; });
+  var seen = {}; getVisible(false, false, true).forEach(function(i){ if(isPriority(i.site)) seen[i.site] = 1; });
   var btn = document.getElementById("prioFilterBtn");
   document.getElementById("prioFilterCount").textContent = Object.keys(seen).length;
   btn.classList.toggle("on", priorityOnly);
