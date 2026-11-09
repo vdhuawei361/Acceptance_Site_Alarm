@@ -19,6 +19,7 @@
     --closed:#33D17A; --closedFill:rgba(51,209,122,.16);
     --verify:#6EA8FF; --verifyFill:rgba(110,168,255,.18);
     --submitted:#C084FC; --submittedFill:rgba(192,132,252,.18);
+  --cancelled:#8A94A6; --cancelledFill:rgba(138,148,166,.18);
     --muted:#6B7E98; --text:#E7EEF9; --subtext:#9FB0C8; --inputBg:rgba(255,255,255,.05);
     --danger:#FB6F8D; --shadow:rgba(0,0,0,.55);
     --mono:"SF Mono",Consolas,"Cascadia Code",monospace;
@@ -55,6 +56,7 @@
     position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px var(--shadow);}
   .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
   .stat .l{font-size:8px; color:var(--muted); letter-spacing:1px; margin-top:2px; line-height:1.2;}
+  .stat .sub{display:block; font-size:7.5px; letter-spacing:.2px; color:var(--cancelled); margin-top:1px; white-space:nowrap;}
   .stat.open{background:var(--openFill); border-color:rgba(245,169,61,.35);}
   .stat.verify{background:var(--verifyFill); border-color:rgba(110,168,255,.4);}
   .stat.submitted{background:var(--submittedFill); border-color:rgba(192,132,252,.4);}
@@ -81,6 +83,9 @@
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
   .chip{flex:1 1 auto; white-space:nowrap; text-align:center; padding:7px 6px; border-radius:20px; font-size:11px; font-weight:700;
     background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
+  .chip .cshort{display:none;}
+  @media (max-width:430px){ .chip .cfull{display:none;} .chip .cshort{display:inline;} }      /* six status chips must share one line */
+  @media (max-width:340px){ .chip{font-size:10px; padding:7px 4px;} }
   .chip.active{background:linear-gradient(180deg, #4EE8D6, var(--accent)); color:#06211D; border-color:var(--accent);
     box-shadow:0 0 0 1px var(--accentGlow), 0 4px 14px var(--accentGlow), inset 0 1px 0 rgba(255,255,255,.4);}
   .tabs{display:flex; border-bottom:1px solid var(--border);}
@@ -138,7 +143,9 @@
     background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     box-shadow:inset 0 1px 0 var(--borderHi), 0 5px 14px var(--shadow);}
-  .irow.verify{border-left-color:var(--verify);} .irow.submitted{border-left-color:var(--submitted);} .irow.resolved{border-left-color:var(--closed);}
+  .irow.verify{border-left-color:var(--verify);} .irow.submitted{border-left-color:var(--submitted);} .irow.resolved{border-left-color:var(--closed);} .irow.cancelled{border-left-color:var(--cancelled);}
+  .irow.cancelled{opacity:.72;}
+  .irow.cancelled .f-desc .val{text-decoration:line-through; text-decoration-color:rgba(255,255,255,.35);}
   .irow-top{display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:wrap; margin-bottom:4px; cursor:pointer;}
   .irow-top .badge{padding:2px 8px;}
   .irow-top .caret{color:var(--muted); font-size:10px; margin-left:4px;}
@@ -164,6 +171,9 @@
   .f-del{flex:0 0 26px; border-radius:8px; border:1px solid var(--border); background:var(--inputBg); color:var(--danger);
     display:flex; align-items:center; justify-content:center; padding:0;}
   .f-del svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .f-cancel{flex:0 0 26px; border-radius:8px; border:1px solid var(--border); background:var(--inputBg); color:var(--muted);
+    display:flex; align-items:center; justify-content:center; padding:0;}
+  .f-cancel svg{width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
   .irow-details{display:none; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); font-size:12px; color:var(--subtext); line-height:1.45;}
   .irow.expanded .irow-details{display:block;}
   .irow-details .meta{margin:0 0 6px;} .irow-details .full{margin-bottom:6px; color:var(--text);}
@@ -185,7 +195,7 @@
     .irow-grid{flex-direction:row; align-items:stretch;}
     .irow-l2, .irow-l3{display:contents;}
     .f-id{order:1; flex:0 0 100px;} .f-desc{order:2; flex:1.1 1 0;} .f-note{order:3; flex:2.2 1 0;}
-    .f-user{order:4; flex:1.2 1 0; max-width:none;} .f-plan{order:5; flex:0 0 118px;} .f-del{order:6; flex:0 0 30px;}
+    .f-user{order:4; flex:1.2 1 0; max-width:none;} .f-plan{order:5; flex:0 0 118px;} .f-del{order:6; flex:0 0 30px;} .f-cancel{order:6; flex:0 0 30px;}
   }
   .card .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
   .card .id{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.4px;}
@@ -194,6 +204,7 @@
   .badge.verify{background:var(--verifyFill); color:var(--verify); box-shadow:0 0 10px rgba(110,168,255,.3), inset 0 1px 0 rgba(255,255,255,.12);}
   .badge.submitted{background:var(--submittedFill); color:var(--submitted); box-shadow:0 0 10px rgba(192,132,252,.3), inset 0 1px 0 rgba(255,255,255,.12);}
   .badge.resolved{background:var(--closedFill); color:var(--closed); box-shadow:0 0 10px rgba(51,209,122,.25), inset 0 1px 0 rgba(255,255,255,.12);}
+  .badge.cancelled{background:var(--cancelledFill); color:var(--cancelled); box-shadow:0 0 10px rgba(138,148,166,.2), inset 0 1px 0 rgba(255,255,255,.1);}
   .card .site{font-weight:700; font-size:13px; margin-bottom:3px;}
   .card .desc{font-size:13px; color:var(--subtext); line-height:1.4; margin-bottom:8px;}
   .card .meta{font-size:10px; color:var(--muted); margin-bottom:8px;}
@@ -251,8 +262,9 @@
   body.detail-open #fab{display:none;}
   body.detail-open .zoom-controls{bottom:150px;}
   .detail-bar .txt{font-size:12px; margin-bottom:8px; line-height:1.4;}
-  .detail-bar .actions{display:flex; gap:6px;}
-  .detail-bar .actions button{flex:1; padding:8px 0; border-radius:8px; border:1px solid var(--border);
+  .detail-bar .actions{display:flex; flex-wrap:wrap; gap:6px;}
+  #detailCancel{color:var(--muted);}
+  .detail-bar .actions button{flex:1 1 auto; padding:8px 8px; border-radius:8px; border:1px solid var(--border);
     background:var(--inputBg); font-size:11px; font-weight:700;}
 
   /* ---- FAB ---- */
@@ -425,7 +437,7 @@
     <div class="stat verify"><div class="n" id="statVerify">0</div><div class="l">VERIFY</div></div>
     <div class="stat submitted"><div class="n" id="statSubmitted">0</div><div class="l">SUBMITTED A85</div></div>
     <div class="stat resolved"><div class="n" id="statResolved">0</div><div class="l">RESOLVED</div></div>
-    <div class="stat total"><div class="n" id="statTotal">0</div><div class="l">TOTAL</div></div>
+    <div class="stat total"><div class="n" id="statTotal">0</div><div class="l" id="statTotalLabel">TOTAL</div></div>
   </div>
 </header>
 
@@ -442,8 +454,9 @@
     <div class="chip active" data-filter="All">All</div>
     <div class="chip" data-filter="Open">Open</div>
     <div class="chip" data-filter="Verify">Verify</div>
-    <div class="chip" data-filter="Submitted A85">Submitted A85</div>
+    <div class="chip" data-filter="Submitted A85"><span class="cfull">Submitted A85</span><span class="cshort">A85</span></div>
     <div class="chip" data-filter="Resolved">Resolved</div>
+    <div class="chip" data-filter="Cancelled">Cancelled</div>
   </div>
   <div class="chips cchips" id="catChips">
     <div class="cchip active" data-cat-filter="Any">Any</div>
@@ -542,6 +555,7 @@
       <button id="detailProgress">PROGRESS</button>
       <button id="detailToggle">VERIFY</button>
       <button id="detailToggle2" style="display:none">FAILED</button>
+      <button id="detailCancel">CANCEL</button>
       <button id="detailDel">DELETE</button>
     </div>
   </div>
@@ -692,17 +706,22 @@
 var SITE_COLORS = ["#2DD4BF","#A78BFA","#FBBF24","#F472B6","#4ADE80","#38BDF8","#FB923C","#22D3EE"];
 // Workflow:  Open -> Verify -> (pass) Submitted A85 -> (pass) Resolved.
 //            A fail at either review stage sends it back to Open.   Resolved can be reopened.
-function statusKey(st){ return st==="Verify" ? "verify" : (st==="Submitted A85" ? "submitted" : (st==="Resolved" ? "resolved" : "open")); }
+//            Cancel (from Open / Verify / Submitted A85) -> Cancelled: kept on record, not counted as work.   Cancelled can be reopened.
+function statusKey(st){ return st==="Verify" ? "verify" : (st==="Submitted A85" ? "submitted" : (st==="Resolved" ? "resolved" : (st==="Cancelled" ? "cancelled" : "open"))); }
 var STATUS = {
   Open:         { color:"#F5A93D", fill:"rgba(245,169,61,.22)" },
   Verify:       { color:"#6EA8FF", fill:"rgba(110,168,255,.22)" },
   "Submitted A85": { color:"#C084FC", fill:"rgba(192,132,252,.22)" },
-  Resolved:     { color:"#33D17A", fill:"rgba(51,209,122,.22)" }
+  Resolved:     { color:"#33D17A", fill:"rgba(51,209,122,.22)" },
+  Cancelled:    { color:"#8A94A6", fill:"rgba(138,148,166,.22)" }
 };
+// Work that still needs doing: not Resolved and not Cancelled.
+function isOpenWork(st){ return st!=="Resolved" && st!=="Cancelled"; }
 // Older saved data: "Closed" is the same thing as Resolved, and "Verification" was the earlier name of Verify.
 function normStatus(st){
   if(st==="Closed") return "Resolved";
   if(st==="Verification") return "Verify";
+  if(st==="Canceled") return "Cancelled";
   return STATUS[st] ? st : "Open";
 }
 
@@ -938,9 +957,21 @@ var STATUS_FLOW = {
   vfail:  { from:"Verify",        to:"Open",          note:"Verify failed → back to Open",      toast:"Verify failed — back to Open" },
   apass:  { from:"Submitted A85", to:"Resolved",      note:"A85 passed → Resolved",             toast:"A85 passed — Resolved" },
   afail:  { from:"Submitted A85", to:"Open",          note:"A85 failed → back to Open",         toast:"A85 failed — back to Open" },
-  reopen: { from:"Resolved",      to:"Open",          note:"Reopened",                          toast:"Reopened" }
+  reopen: { from:"Resolved",      to:"Open",          note:"Reopened",                          toast:"Reopened" },
+  uncancel: { from:"Cancelled",    to:"Open",          note:"Reopened",                          toast:"Reopened" }
 };
+// Cancel: allowed from any stage that still needs work, so it isn't a fixed from→to step like the others.
+function cancelIssue(id){
+  var iss = issues.find(function(i){ return i.id===id; });
+  if(!iss) return;
+  if(!isOpenWork(iss.status)){ showToast("Only issues that still need work can be cancelled"); refreshAll(false); return; }
+  var reason = prompt("Cancel "+iss.id+" — "+iss.site+"?\n\nWhy is it being cancelled? (optional)\nA cancelled issue stays on record but isn't counted as work. You can reopen it later.", "");
+  if(reason===null) return;                         // cancelled the question: leave it where it is
+  reason = reason.trim();
+  changeStatus(id, iss.status, "Cancelled", "Cancelled"+(reason ? ": "+reason : ""), "Cancelled — find it under the Cancelled filter");
+}
 function doStatusAction(act, id){
+  if(act==="cancel"){ cancelIssue(id); return; }
   var iss = issues.find(function(i){ return i.id===id; });
   var step = STATUS_FLOW[act];
   if(!iss || !step) return;
@@ -955,6 +986,7 @@ function doStatusAction(act, id){
   changeStatus(id, step.from, step.to, note, step.toast);
 }
 function deleteIssue(id){
+  if(!isAdmin()){ showToast("Only the admin can delete issues"); return; }        // second guard: the button isn't shown to anyone else
   if(FIREBASE_ENABLED){
     db.collection(COLLECTION).doc(id).delete()
       .catch(function(err){ console.error(err); showToast("Could not delete — check connection"); });
@@ -1005,9 +1037,10 @@ function fmtDate(ts){
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 // ───────────────────────── list view ─────────────────────────
+var CANCEL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>';
 var TRASH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
 var expandedRows = {};          // rows whose details are open stay open across refreshes
-var STAGE_ORDER = ["Open","Verify","Submitted A85","Resolved"];
+var STAGE_ORDER = ["Open","Verify","Submitted A85","Resolved","Cancelled"];
 // A STATUS LOG is the automatic entry written when someone toggles an issue's status (Verify, Pass/Fail, Reopen, Resolve all).
 // A PROGRESS NOTE is what a person types with the Progress button. Only progress notes count as an issue's "latest progress".
 // New entries carry an explicit kind ("status" / "note"). Entries saved before that have no marker, so they are recognised by the
@@ -1044,6 +1077,7 @@ function renderList(){
       return '<button class="btn-pass" data-status-act="vpass">✓ Pass</button><button class="btn-fail" data-status-act="vfail">✕ Failed</button>';
     if(iss.status==="Submitted A85")
       return '<button class="btn-pass" data-status-act="apass">✓ Pass</button><button class="btn-fail" data-status-act="afail">✕ Failed</button>';
+    if(iss.status==="Cancelled") return '<button class="btn-reopen" data-status-act="uncancel">Reopen</button>';
     return '<button class="btn-reopen" data-status-act="reopen">Reopen</button>';
   }
   function field(cls, text, none, title, pre){
@@ -1064,6 +1098,9 @@ function renderList(){
   }
   function rowHtml(iss){
     var cls = statusKey(iss.status), last = latestUpdate(iss), late = isOverdue(iss);
+    // Cancel is for anyone (while the issue still needs work); Delete is for the admin only and isn't drawn for anyone else
+    var cancelBtn = isOpenWork(iss.status) ? '<button class="f-cancel" data-act="cancel" title="Cancel this issue" aria-label="Cancel this issue">'+CANCEL_SVG+'</button>' : '';
+    var delBtn = isAdmin() ? '<button class="f-del" data-act="del" title="Delete (admin only)" aria-label="Delete this issue">'+TRASH_SVG+'</button>' : '';
     return '<div class="irow '+cls+(expandedRows[iss.id] ? ' expanded' : '')+'" data-id="'+iss.id+'">'+
       '<div class="irow-top"><span>'+badgeHtml(iss, cls)+'<span class="caret">▾</span></span>'+
         '<span class="irow-actions">'+
@@ -1075,7 +1112,7 @@ function renderList(){
         '<div class="irow-l2">'+
           '<div class="f f-id" title="Issue ID">'+esc(iss.id)+'</div>'+
           field("f-desc", esc(iss.issue), false, iss.issue, catTagHtml(iss.category))+
-          '<button class="f-del" data-act="del" title="Delete">'+TRASH_SVG+'</button>'+
+          cancelBtn+delBtn+
         '</div>'+
         '<div class="irow-l3">'+
           field("f-note", last ? esc(last.note) : "—", !last, last ? "Last update: "+last.note : "No updates yet")+
@@ -1092,7 +1129,7 @@ function renderList(){
       var sa = STAGE_ORDER.indexOf(a.status), sb = STAGE_ORDER.indexOf(b.status);
       return sa!==sb ? sa-sb : b.ts-a.ts;                       // Open first, Resolved last; newest first within a stage
     });
-    var unresolved = list.filter(function(i){ return i.status!=="Resolved"; }).length;
+    var unresolved = list.filter(function(i){ return isOpenWork(i.status); }).length;
     var resolveBtn = unresolved
       ? '<button class="site-resolve" data-resolve-site="'+esc(site)+'" title="Resolve all '+unresolved+' unresolved issue'+(unresolved!==1?'s':'')+' of this site">✓ Resolve all</button>' : '';
     var pri = isPriority(site), tag = regionTag ? '<span class="site-region">'+esc(regionTag)+'</span>' : "";
@@ -1144,7 +1181,9 @@ function renderList(){
     Array.prototype.forEach.call(row.querySelectorAll("[data-status-act]"), function(btn){
       btn.addEventListener("click", function(){ doStatusAction(btn.getAttribute("data-status-act"), id); });
     });
-    row.querySelector('[data-act="del"]').addEventListener("click", function(){ confirmDeleteIssue(id); });
+    var delB = row.querySelector('[data-act="del"]'), canB = row.querySelector('[data-act="cancel"]');
+    if(delB) delB.addEventListener("click", function(){ confirmDeleteIssue(id); });
+    if(canB) canB.addEventListener("click", function(){ doStatusAction("cancel", id); });
     // tap the status or the fields to show/hide the full details (registered, owner, whole timeline)
     row.addEventListener("click", function(e){
       if(e.target.closest("button")) return;
@@ -1153,6 +1192,7 @@ function renderList(){
   });
 }
 function confirmDeleteIssue(id){
+  if(!isAdmin()){ showToast("Only the admin can delete issues"); return; }
   var iss = issues.find(function(i){ return i.id===id; });
   if(!iss) return;
   var progCount = (iss.progress||[]).length;
@@ -1210,7 +1250,7 @@ function todayStr(){
   var d = new Date(), p = function(n){ return (n<10?"0":"")+n; };
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
 }
-function isOverdue(iss){ return !!iss.planDate && iss.status!=="Resolved" && iss.planDate < todayStr(); }
+function isOverdue(iss){ return !!iss.planDate && isOpenWork(iss.status) && iss.planDate < todayStr(); }
 // ───────────────────────── issue groups (rules — edit here) ─────────────────────────
 // GROUPS-BEGIN
 // Every issue is put in a group from the words in its description. Going top to bottom, the FIRST group that has
@@ -1535,8 +1575,9 @@ function planBounds(){
 function planMatch(iss){
   var m = planFilter.mode;
   if(m==="all") return true;
+  if(iss.status==="Cancelled" && filter!=="Cancelled") return false;      // a cancelled issue isn't planned work: plan-date queries skip it (unless you're viewing Cancelled)
   if(m==="none") return !iss.planDate;
-  if(m==="overdue") return !!iss.planDate && iss.planDate < todayStr() && iss.status!=="Resolved";
+  if(m==="overdue") return !!iss.planDate && iss.planDate < todayStr() && isOpenWork(iss.status);
   var r = planBounds();
   if(m==="range" && !r.from && !r.to) return true;              // nothing chosen yet: don't hide anything
   if(!iss.planDate) return false;
@@ -1582,7 +1623,7 @@ function niceStep(max){
   for(var i=0;i<steps.length;i++) if(max/steps[i] <= 5) return steps[i];
   return 1000;
 }
-var PLAN_STACK = ["Open","Verify","Submitted A85","Resolved"];
+var PLAN_STACK = ["Open","Verify","Submitted A85","Resolved","Cancelled"];
 
 function renderPlan(){
   syncPlanControls();
@@ -1594,7 +1635,7 @@ function renderPlan(){
     c.total++; c[i.status] = (c[i.status]||0)+1;
   });
   var dates = Object.keys(counts).sort();
-  var overdue = dated.filter(function(i){ return i.planDate<today && i.status!=="Resolved"; }).length;
+  var overdue = dated.filter(function(i){ return i.planDate<today && isOpenWork(i.status); }).length;
   var summary = '<span class="plan-pill"><b>'+dated.length+'</b> planned</span>';
   if(overdue) summary += '<span class="plan-pill bad"><b>'+overdue+'</b> overdue</span>';
   summary += '<span class="plan-pill"><b>'+(base.length-dated.length)+'</b> no plan date</span>';
@@ -1663,7 +1704,7 @@ function renderPlan(){
     }
     if(single===d)
       plot.appendChild(svgEl("rect",{x:x0+1, y:TOP-14, width:STEP-2, height:plotH+14+BOT-6, rx:6, fill:"none", stroke:"#37D6C4", "stroke-width":1.4}));
-    var unresolved = c ? ((c.total||0)-(c["Resolved"]||0)) : 0;
+    var unresolved = c ? ((c.total||0)-(c["Resolved"]||0)-(c["Cancelled"]||0)) : 0;
     var col = d===today ? "#37D6C4" : (d<today && unresolved>0 ? "#FB6F8D" : "#9FB0C8");
     var dl = svgEl("text",{x:x0+STEP/2, y:TOP+plotH+14, "text-anchor":"middle", fill:col, "font-size":9, "font-weight": d===today?800:600, "font-family":"var(--mono)"});
     dl.textContent = +d.slice(8,10); plot.appendChild(dl);
@@ -1704,7 +1745,7 @@ function renderAgenda(){
   });
   if(list.length===0){ el.innerHTML = '<div class="empty-note">No issues match this plan date query.</div>'; return; }
   var today = todayStr(), groupN = {}, groupOpen = {};
-  list.forEach(function(i){ var k = i.planDate||""; groupN[k] = (groupN[k]||0)+1; if(i.status!=="Resolved") groupOpen[k] = (groupOpen[k]||0)+1; });
+  list.forEach(function(i){ var k = i.planDate||""; groupN[k] = (groupN[k]||0)+1; if(isOpenWork(i.status)) groupOpen[k] = (groupOpen[k]||0)+1; });
   var html = "", cur = null, shown = 0;
   for(var n=0; n<list.length && shown<planAgendaLimit; n++){
     var i = list[n], k = i.planDate||"";
@@ -2273,7 +2314,10 @@ function showDetail(){
   if(iss.status==="Open"){ setBtn(b1,"verify","VERIFY","btn-verify"); b2.style.display = "none"; }
   else if(iss.status==="Verify"){ setBtn(b1,"vpass","✓ PASS","btn-pass"); setBtn(b2,"vfail","✕ FAILED","btn-fail"); b2.style.display = ""; }
   else if(iss.status==="Submitted A85"){ setBtn(b1,"apass","✓ PASS","btn-pass"); setBtn(b2,"afail","✕ FAILED","btn-fail"); b2.style.display = ""; }
+  else if(iss.status==="Cancelled"){ setBtn(b1,"uncancel","REOPEN","btn-reopen"); b2.style.display = "none"; }
   else { setBtn(b1,"reopen","REOPEN","btn-reopen"); b2.style.display = "none"; }
+  document.getElementById("detailCancel").style.display = isOpenWork(iss.status) ? "" : "none";
+  document.getElementById("detailDel").style.display = isAdmin() ? "" : "none";        // Delete is the admin's only
   bar.classList.add("show");
   syncDetailOpen();
 }
@@ -2286,6 +2330,9 @@ document.getElementById("detailEdit").addEventListener("click", function(){ if(s
 });
 document.getElementById("detailDel").addEventListener("click", function(){
   if(selectedId) confirmDeleteIssue(selectedId);
+});
+document.getElementById("detailCancel").addEventListener("click", function(){
+  if(selectedId) doStatusAction("cancel", selectedId);
 });
 
 // background pan + wheel zoom + pinch zoom
@@ -2852,7 +2899,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update By</Data></Cell></Row>'];
   rows.forEach(function(iss){
-    var style = iss.status==="Open" ? "open" : (iss.status==="Verify" ? "verify" : (iss.status==="Submitted A85" ? "submitted" : "closed"));
+    var style = iss.status==="Open" ? "open" : (iss.status==="Verify" ? "verify" : (iss.status==="Submitted A85" ? "submitted" : (iss.status==="Cancelled" ? "cancelled" : "closed")));
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
     var prog = (iss.progress||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
     var notes = prog.filter(function(p){ return !isStatusLog(p); });       // real progress notes only: status-toggle logs don't count
@@ -2916,6 +2963,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
     '<Style ss:ID="verify"><Interior ss:Color="#D3E3FF" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="submitted"><Interior ss:Color="#E9D8FF" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="closed"><Interior ss:Color="#C9F0D8" ss:Pattern="Solid"/></Style>\n'+
+    '<Style ss:ID="cancelled"><Interior ss:Color="#E3E7EE" ss:Pattern="Solid"/></Style>\n'+
     '<Style ss:ID="date"><NumberFormat ss:Format="yyyy-mm-dd"/></Style>\n</Styles>\n'+
     '<Worksheet ss:Name="Site Issues"><Table>\n'+rowsXml.join("\n")+'\n</Table></Worksheet>\n'+
     '<Worksheet ss:Name="Progress History"><Table>\n'+progRowsXml.join("\n")+'\n</Table></Worksheet>\n</Workbook>';
@@ -3006,11 +3054,15 @@ function refreshStats(){
   var verifying = issues.filter(function(i){return i.status==="Verify";}).length;
   var submitted = issues.filter(function(i){return i.status==="Submitted A85";}).length;
   var resolved = issues.filter(function(i){return i.status==="Resolved";}).length;
+  var cancelled = issues.filter(function(i){return i.status==="Cancelled";}).length;
   document.getElementById("statOpen").textContent = open;
   document.getElementById("statVerify").textContent = verifying;
   document.getElementById("statSubmitted").textContent = submitted;
   document.getElementById("statResolved").textContent = resolved;
-  document.getElementById("statTotal").textContent = issues.length;
+  document.getElementById("statTotal").textContent = issues.length - cancelled;      // Total = the four tiles added up; cancelled issues aren't work
+  var tl = document.getElementById("statTotalLabel");
+  tl.innerHTML = "TOTAL"+(cancelled ? '<span class="sub">+'+cancelled+' ⊘</span>' : "");
+  tl.parentNode.title = cancelled ? cancelled+" cancelled issue"+(cancelled!==1?"s":"")+" not included (see the Cancelled filter)" : "";
 }
 function refreshAll(refit){
   renderPrioFilter();
@@ -3232,9 +3284,9 @@ document.getElementById("addUserBtn").addEventListener("click", function(){
 // same note on its timeline. (This deliberately skips the Verify and Submitted A85 steps.)
 var srSite = "", srIds = [];
 function openSiteResolve(site){
-  var shown = getVisible().filter(function(i){ return i.site===site && i.status!=="Resolved"; });
+  var shown = getVisible().filter(function(i){ return i.site===site && isOpenWork(i.status); });
   if(!shown.length){ showToast("Nothing to resolve at "+site); return; }
-  var hidden = issues.filter(function(i){ return i.site===site && i.status!=="Resolved" && shown.indexOf(i)===-1; }).length;
+  var hidden = issues.filter(function(i){ return i.site===site && isOpenWork(i.status) && shown.indexOf(i)===-1; }).length;
   srSite = site; srIds = shown.map(function(i){ return i.id; });
   var counts = {}; shown.forEach(function(i){ counts[i.status] = (counts[i.status]||0)+1; });
   var parts = ["Open","Verify","Submitted A85"].filter(function(st){ return counts[st]; }).map(function(st){ return counts[st]+" "+st; });
@@ -3267,7 +3319,7 @@ function resolveSiteIssues(site, ids, note){
       return db.runTransaction(function(tx){
         return tx.get(ref).then(function(doc){
           if(!doc.exists) return "gone";
-          if(normStatus(doc.data().status)==="Resolved") return "skip";
+          if(!isOpenWork(normStatus(doc.data().status))) return "skip";
           tx.update(ref, { status:"Resolved", updated:now, progress: firebase.firestore.FieldValue.arrayUnion(entry()) });
           return "ok";
         });
@@ -3282,7 +3334,7 @@ function resolveSiteIssues(site, ids, note){
   var n = 0;
   ids.forEach(function(id){
     var iss = issues.find(function(i){ return i.id===id; });
-    if(iss && iss.status!=="Resolved"){
+    if(iss && isOpenWork(iss.status)){
       iss.status = "Resolved"; iss.updated = now;
       if(!iss.progress) iss.progress = [];
       iss.progress.push(entry()); n++;
