@@ -110,15 +110,25 @@
   /* ---- issues grouped by site: a site box on the left, one thin row per issue beside it ---- */
   .list-inner{max-width:1100px; margin:0 auto;}
   .site-block{display:flex; gap:8px; margin-bottom:10px; align-items:stretch;}
-  .site-box{flex:0 0 72px; display:flex; align-items:flex-start; justify-content:center; text-align:center; padding:14px 4px 8px;
+  .site-box{flex:0 0 72px; display:flex; align-items:flex-start; justify-content:center; text-align:center; padding:4px 4px 4px;
     border-radius:16px; border:1px solid var(--border); border-left:3px solid var(--rc, var(--accent));
     background:linear-gradient(165deg, var(--panelHi), transparent 45%), var(--panel);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     box-shadow:inset 0 1px 0 var(--borderHi), 0 8px 20px var(--shadow);
     font-weight:800; font-size:12px; letter-spacing:.3px; overflow-wrap:anywhere; color:var(--text);}
-  .site-name{position:sticky; top:14px; display:flex; flex-direction:column; align-items:center; gap:7px;}   /* stays in view while you scroll through this site's issues */
+  .site-name{position:sticky; top:14px; display:flex; flex-direction:column; align-items:center; gap:3px;}   /* stays in view while you scroll through this site's issues */
   .site-resolve{padding:4px 6px; border-radius:9px; border:1px solid rgba(51,209,122,.55); background:rgba(51,209,122,.12); color:var(--closed);
     font-size:9px; font-weight:800; letter-spacing:.2px; line-height:1.2; box-shadow:0 0 10px rgba(51,209,122,.18);}
+  /* priority flame: plain outline when off, fire colour when on. 30px tap area, but only 20px of layout space so rows don't grow */
+  .site-top{display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .prio-btn{width:30px; height:30px; margin:-5px; padding:0; border:none; background:none; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; -webkit-tap-highlight-color:transparent;}
+  .prio-btn svg{width:20px; height:20px; display:block;}
+  .prio-btn .fl-out{fill:none; stroke:var(--muted); stroke-width:1.6; stroke-linejoin:round; opacity:.75;}
+  .prio-btn .fl-in{display:none;}
+  .prio-btn.on .fl-out{fill:url(#flameGrad); stroke:#FF5A1F; stroke-width:.8; opacity:1;}
+  .prio-btn.on .fl-in{display:block; fill:#FFE79A;}
+  .prio-btn.on svg{filter:drop-shadow(0 0 5px rgba(255,110,20,.8));}
+  .site-resolve{line-height:1.1; padding:3px 5px;}
   .sr-summary{font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;}
   .sr-summary b{color:var(--closed);} .sr-summary .sr-counts{color:var(--subtext); font-size:12px;}
   .sr-warn{font-size:11px; line-height:1.45; color:var(--open); background:rgba(245,169,61,.10); border:1px solid rgba(245,169,61,.35); border-radius:10px; padding:8px 10px; margin:2px 0 4px;}
@@ -168,8 +178,10 @@
     .irow-top .badge{padding:2px 6px; font-size:8.5px; letter-spacing:.6px;}
   }
   @media (min-width:720px){                                           /* wide: ID | Description | Last update note | by | Plan Date | trash, all on one line */
-    .site-box{flex-basis:150px; font-size:19px; border-radius:22px; align-items:center; padding:8px 4px;}
-    .site-resolve{font-size:11px; padding:5px 12px;}
+    .site-box{flex-basis:164px; font-size:19px; border-radius:22px; align-items:center; padding:8px 4px;}
+    .site-resolve{font-size:11px; padding:5px 12px; line-height:1.2;}
+    .site-top{flex-direction:row; gap:8px;}
+    .site-region{font-size:10px; letter-spacing:1px;}                              /* wide: the flame sits beside the site name */
     .irow-grid{flex-direction:row; align-items:stretch;}
     .irow-l2, .irow-l3{display:contents;}
     .f-id{order:1; flex:0 0 100px;} .f-desc{order:2; flex:1.1 1 0;} .f-note{order:3; flex:2.2 1 0;}
@@ -265,6 +277,12 @@
   /* ---- issue groups ---- */
   #groupsView{flex:1; overflow-y:auto; padding:10px 14px 90px; display:none; -webkit-overflow-scrolling:touch;}
   #grpChart{display:block; width:100%; height:auto;}
+  .pw-wrap{position:relative;}
+  .pw-wrap input{padding-right:64px;}
+  .pw-wrap button{position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:8px;}
+  .linkbtn{display:block; background:none; border:none; color:var(--accent); font-size:12px; font-weight:700; padding:10px 0 2px; text-align:left;}
+  .setup-help{font-size:11px; color:var(--subtext); line-height:1.5; margin:4px 0 8px;}
+  #setupOut{width:100%; min-height:74px; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--inputBg); color:var(--text); font-family:var(--mono); font-size:10.5px; resize:none; word-break:break-all; color-scheme:dark;}
   .grp-maphead{display:flex; justify-content:space-between; align-items:center; margin:12px 0 6px;}
   .grp-maphead .mini{margin:0;}
   #grpEditToggle{padding:6px 12px; border-radius:16px; border:1px solid rgba(55,214,196,.5); background:rgba(55,214,196,.10); color:var(--accent); font-size:11px; font-weight:800;}
@@ -280,11 +298,31 @@
   .grp-card{margin-bottom:8px; padding:9px 12px; border-radius:12px; border:1px solid var(--border); border-left:3px solid var(--accent);
     background:linear-gradient(165deg, var(--panelHi), transparent 40%), var(--panel);}
   .grp-card.sel{border-color:rgba(55,214,196,.7); box-shadow:0 0 14px rgba(55,214,196,.18);}
-  .grp-hdr{display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:13px; margin-bottom:2px;}
+  .grp-hdr{display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:13px; min-height:30px; cursor:pointer;}
+  .grp-hdr .right{display:flex; align-items:center; gap:10px;}
+  .grp-hdr .caret{color:var(--muted); font-size:11px; display:inline-block; transition:transform .15s;}
+  .grp-card.open .grp-hdr .caret{transform:rotate(180deg);}
+  .grp-body{display:none; margin-top:4px;}
+  .grp-card.open .grp-body{display:block;}
   .grp-hdr .n{font-family:var(--mono); color:var(--accent);}
   .grp-words{font-size:10px; color:var(--muted); line-height:1.4; margin-bottom:6px;}
   .grp-desc{display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--subtext); padding:3px 0; border-top:1px dashed rgba(255,255,255,.06);}
   .grp-desc .n{font-family:var(--mono); color:var(--text); flex-shrink:0;} .grp-desc.none{color:var(--muted);}
+  .search-row{display:flex; gap:8px; margin-bottom:8px;}
+  .search-row .field{flex:1; min-width:0; margin-bottom:0;}
+  .prio-filter{flex:0 0 auto; display:flex; align-items:center; justify-content:center; gap:5px; min-width:54px; padding:0 11px; border-radius:9px;
+    border:1px solid var(--border); background:var(--inputBg); color:var(--muted); font-family:var(--mono); font-size:12px; font-weight:800;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.3); -webkit-tap-highlight-color:transparent;}
+  .prio-filter svg{width:20px; height:20px; display:block;}
+  .prio-filter .fl-out{fill:none; stroke:var(--muted); stroke-width:1.6; stroke-linejoin:round; opacity:.75;}
+  .prio-filter .fl-in{display:none;}
+  .prio-filter.on{border-color:rgba(255,138,0,.75); background:rgba(255,120,20,.14); color:#FFB347; box-shadow:0 0 12px rgba(255,110,20,.28);}
+  .prio-filter.on .fl-out{fill:url(#flameGrad); stroke:#FF5A1F; stroke-width:.8; opacity:1;}
+  .prio-filter.on .fl-in{display:block; fill:#FFE79A;}
+  .prio-filter.on svg{filter:drop-shadow(0 0 5px rgba(255,110,20,.8));}
+  .prio-hdr .region-name{display:inline-flex; align-items:center; gap:6px;}
+  .hdr-flame{width:15px; height:15px; display:block; filter:drop-shadow(0 0 4px rgba(255,110,20,.8));}
+  .site-region{font-family:var(--mono); font-size:8px; font-weight:800; letter-spacing:.6px; line-height:1; color:var(--rc, var(--accent));}
   .cchips{margin:-2px 0 10px;}
   .cchip{flex:1 1 auto; white-space:nowrap; text-align:center; padding:5px 6px; border-radius:20px; font-size:10.5px; font-weight:700;
     background:var(--inputBg); color:var(--muted); border:1px solid var(--border);}
@@ -391,7 +429,10 @@
 </header>
 
 <div class="controls">
-  <input class="field" id="searchInput" placeholder="Search site, issue, or ID…">
+  <div class="search-row">
+    <input class="field" id="searchInput" placeholder="Search site, issue, or ID…">
+    <button type="button" class="prio-filter" id="prioFilterBtn" aria-pressed="false" title="Show priority sites only" aria-label="Show priority sites only"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fl-out" d="M12 2.2c.5 3.3 3.3 5 4.9 7.9 1.7 3.1 1.1 7.6-2.1 10C13.6 21 12.8 21.3 12 21.3s-1.6-.3-2.8-1.2c-3.200-2.400-3.900-6.900-2.200-10 .6-1.100 1.200-1.800 1.800-2.600.6 1.800 1.400 2.500 2.300 2.600C10.700 6.800 11 4.100 12 2.200z"/><path class="fl-in" d="M12 21.300c-2.300 0-3.900-1.600-3.900-3.700 0-1.900 1.500-3.200 2.500-4.800.4 1 1 1.600 1.600 2 .3-.6.4-1.200.3-1.900 1.600 1.200 3.400 2.600 3.400 4.700 0 2.100-1.600 3.700-3.900 3.700z"/></svg><span id="prioFilterCount">0</span></button>
+  </div>
   <div style="display:flex; gap:8px;">
     <select class="field" id="regionSelect" style="flex:1;"><option>All Regions</option></select>
     <select class="field" id="siteSelect" style="flex:1.3;"><option>All Sites</option></select>
@@ -429,9 +470,9 @@
     <svg id="grpChart"></svg>
     <div class="plan-note">Tap a bar to show only that group in the List, Mind Map and exports. Tap it again to clear. The chart follows your other filters.</div>
   </div>
-  <div class="grp-maphead"><label class="mini">WHAT IS IN EACH GROUP</label><button id="grpEditToggle" style="display:none">✎ Edit words</button></div>
+  <div class="grp-maphead"><label class="mini">WHAT IS IN EACH GROUP</label><button id="grpEditToggle" style="display:none"></button></div>
   <div id="grpMapping"></div>
-  <div id="grpResetWrap" style="display:none"><button class="grp-reset" id="grpReset">Reset all groups to the built-in words</button></div>
+  <div id="grpResetWrap" style="display:none"><button class="grp-reset" id="grpReset"></button></div>
 </div>
 
 <div id="planView">
@@ -574,15 +615,48 @@
 <div class="overlay" id="userOverlay">
   <div class="sheet">
     <h3 id="userOverlayTitle">Who's this?</h3>
-    <div style="font-size:12px; color:var(--subtext); margin-bottom:4px;">
+    <div style="font-size:12px; color:var(--subtext); margin-bottom:4px;" id="userHelp">
       Enter your name so issues you log are attributed to you.
     </div>
-    <label>YOUR NAME</label>
-    <input id="userNameInput" placeholder="e.g. John, Site Team A…">
+    <div id="userNameWrap">
+      <label>YOUR NAME</label>
+      <input id="userNameInput" placeholder="e.g. John, Site Team A…">
+    </div>
+    <div id="adminPassRow" style="display:none;">
+      <label>ADMIN PASSWORD</label>
+      <div class="pw-wrap">
+        <input id="adminPassInput" type="password" placeholder="Admin password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <button type="button" id="adminPassToggle">Show</button>
+      </div>
+    </div>
     <div id="userNameError" style="font-size:11px; color:var(--danger); margin-top:6px; display:none;"></div>
+    <button type="button" class="linkbtn" id="adminModeLink">Admin sign-in</button>
+    <button type="button" class="linkbtn" id="adminSetupLink" style="display:none;">Set up or change the admin password</button>
     <div class="btnrow" id="userOverlayButtons">
       <button class="btn-cancel" id="userCancel" style="display:none;">Cancel</button>
       <button class="btn-save" id="userSave">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="adminSetupOverlay">
+  <div class="sheet">
+    <h3>Admin password</h3>
+    <div class="setup-help">Choose the admin password here. This page does <b>not</b> store it: it only produces two lines of code (a one-way fingerprint) to paste into the app file.</div>
+    <label>NEW PASSWORD (10 OR MORE CHARACTERS)</label>
+    <input id="setupPass" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label>CONFIRM PASSWORD</label>
+    <input id="setupPass2" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <div id="setupError" style="font-size:11px; color:var(--danger); margin-top:6px; display:none;"></div>
+    <div id="setupResult" style="display:none;">
+      <label>REPLACE THESE TWO LINES IN THE APP FILE</label>
+      <textarea id="setupOut" readonly></textarea>
+      <button type="button" class="linkbtn" id="setupCopy">Copy the two lines</button>
+      <div class="setup-help">In the app file, search for <b>ADMIN_VERIFIER</b>, replace the two <b>var ADMIN_…</b> lines with these, and upload the file. Afterwards sign in with this password; anyone signed in with the old one is signed out.</div>
+    </div>
+    <div class="btnrow">
+      <button class="btn-cancel" id="setupClose">Close</button>
+      <button class="btn-save" id="setupGo">Create</button>
     </div>
   </div>
 </div>
@@ -603,6 +677,9 @@
   </div>
 </div>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="flameGrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FF3B1F"/><stop offset=".55" stop-color="#FF8A00"/><stop offset="1" stop-color="#FFC21A"/></linearGradient>
+</defs></svg>
 <div id="toast"></div>
 
 
@@ -680,7 +757,7 @@ if(FIREBASE_ENABLED){
 // ───────────────────────── state ─────────────────────────
 var issues = [];
 var nodePositions = {};   // "site:NAME" or "issue:ID" -> {x,y} — always local to this device
-var filter = "All", siteFilter = "All Sites", regionFilter = "All Regions", categoryFilter = "Any", search = "";
+var filter = "All", siteFilter = "All Sites", regionFilter = "All Regions", categoryFilter = "Any", search = "", priorityOnly = false;
 var selectedId = null;
 var view = "list";
 var zoom = 1, panX = 0, panY = 0;
@@ -723,11 +800,20 @@ function initFirestoreSync(){
   db.collection(COLLECTION).onSnapshot(function(snapshot){
     issues = [];
     var sharedWords;                     // undefined = nobody has changed the group words
+    var sharedPrio = {};                 // the sites currently flagged as priority
     snapshot.forEach(function(doc){
       var d = doc.data();
       if(doc.id === RULES_DOC){ sharedWords = d && d.words; return; }     // the shared group words — not an issue
+      if(doc.id.indexOf(PRIO_PREFIX) === 0){                              // a priority flag — not an issue
+        var pk = siteKey(d && d.site);
+        if(!pk){ try{ pk = siteKey(decodeURIComponent(doc.id.slice(PRIO_PREFIX.length))); }catch(e){} }
+        if(pk) sharedPrio[pk] = true;
+        return;
+      }
+      if(doc.id.charAt(0) === "_") return;                                // any other settings record
       issues.push({ id: doc.id, site: d.site, issue: d.issue, status: normStatus(d.status), ts: d.ts, updated: d.updated || d.ts, progress: d.progress || [], owner: d.owner || "Unknown", planDate: normPlanDate(d.planDate), category: normCategory(d.category) });
     });
+    prioSites = sharedPrio; cachePrio();
     if(sharedWords && typeof sharedWords==="object"){ applyGroupWords(sharedWords); cacheGroupRules(currentWordMap()); }
     else{ applyGroupWords(null); cacheGroupRules(null); }
     // Don't auto-refit the map on every remote change — that would yank
@@ -892,6 +978,7 @@ function getVisible(ignorePlan, ignoreGroup){
       var cat = i.category || "";
       if(categoryFilter==="Not set" ? cat!=="" : cat!==categoryFilter) return false;
     }
+    if(priorityOnly && !isPriority(i.site)) return false;
     if(regionFilter!=="All Regions" && getRegion(i.site)!==regionFilter) return false;
     if(siteFilter!=="All Sites" && i.site!==siteFilter) return false;
     if(filter!=="All" && i.status!==filter) return false;
@@ -927,7 +1014,10 @@ function latestUpdate(iss){
 function renderList(){
   var visible = getVisible();
   var el = document.getElementById("listView");
-  if(visible.length===0){ el.innerHTML = '<div class="empty-note">No issues match — try clearing filters.</div>'; return; }
+  if(visible.length===0){
+    el.innerHTML = '<div class="empty-note">'+(priorityOnly ? "No priority sites match — tap a site's flame to mark it as priority, or tap the flame beside the search box to show all sites." : "No issues match — try clearing filters.")+'</div>';
+    return;
+  }
   function statusButtonsHtml(iss){
     if(iss.status==="Open") return '<button class="btn-verify" data-status-act="verify">Verify</button>';
     if(iss.status==="Verify")
@@ -977,7 +1067,7 @@ function renderList(){
       detailsHtml(iss, last)+
     '</div>';
   }
-  function siteBlock(site, list, rc){
+  function siteBlock(site, list, rc, regionTag){
     list = list.slice().sort(function(a,b){
       var sa = STAGE_ORDER.indexOf(a.status), sb = STAGE_ORDER.indexOf(b.status);
       return sa!==sb ? sa-sb : b.ts-a.ts;                       // Open first, Resolved last; newest first within a stage
@@ -985,25 +1075,45 @@ function renderList(){
     var unresolved = list.filter(function(i){ return i.status!=="Resolved"; }).length;
     var resolveBtn = unresolved
       ? '<button class="site-resolve" data-resolve-site="'+esc(site)+'" title="Resolve all '+unresolved+' unresolved issue'+(unresolved!==1?'s':'')+' of this site">✓ Resolve all</button>' : '';
-    return '<div class="site-block" style="--rc:'+rc+'"><div class="site-box"><span class="site-name"><span class="site-label">'+esc(site)+'</span>'+resolveBtn+'</span></div>'+
+    var pri = isPriority(site), tag = regionTag ? '<span class="site-region">'+esc(regionTag)+'</span>' : "";
+    var flame = '<button type="button" class="prio-btn'+(pri ? ' on' : '')+'" data-prio-site="'+esc(site)+'" aria-pressed="'+(pri ? 'true' : 'false')+'" '+
+      'aria-label="'+(pri ? 'Priority site — tap to remove the priority' : 'Tap to mark this site as priority')+'" title="'+(pri ? 'Priority site — tap to remove' : 'Mark as priority site')+'">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="fl-out" d="M12 2.2c.5 3.3 3.3 5 4.9 7.9 1.7 3.1 1.1 7.6-2.1 10C13.6 21 12.8 21.3 12 21.3s-1.6-.3-2.8-1.2c-3.200-2.400-3.900-6.900-2.200-10 .6-1.100 1.200-1.800 1.800-2.600.6 1.800 1.400 2.500 2.300 2.600C10.700 6.800 11 4.100 12 2.200z"/><path class="fl-in" d="M12 21.300c-2.300 0-3.900-1.600-3.900-3.700 0-1.900 1.500-3.200 2.500-4.800.4 1 1 1.600 1.600 2 .3-.6.4-1.200.3-1.900 1.600 1.200 3.400 2.600 3.400 4.700 0 2.100-1.600 3.700-3.900 3.700z"/></svg></button>';
+    return '<div class="site-block" style="--rc:'+rc+'"><div class="site-box"><span class="site-name"><span class="site-top">'+flame+'<span class="site-label">'+esc(site)+'</span></span>'+tag+resolveBtn+'</span></div>'+
       '<div class="site-rows">'+list.map(rowHtml).join("")+'</div></div>';
   }
+  var prioIssues = visible.filter(function(i){ return isPriority(i.site); });
+  var restIssues = visible.filter(function(i){ return !isPriority(i.site); });
   var groups = {};
   REGION_ORDER.forEach(function(r){ groups[r] = []; });
-  visible.forEach(function(iss){ groups[getRegion(iss.site)].push(iss); });
-  el.innerHTML = '<div class="list-inner">' + REGION_ORDER.filter(function(r){ return groups[r].length>0; }).map(function(r){
-    var list = groups[r];
+  restIssues.forEach(function(iss){ groups[getRegion(iss.site)].push(iss); });
+  function bySiteOf(list){ var m = {}; list.forEach(function(i){ (m[i.site] = m[i.site] || []).push(i); }); return m; }
+  function metaHtml(list, nSites){
     var openCount = list.filter(function(i){ return i.status==="Open"; }).length;
     var verifyCount = list.filter(function(i){ return i.status==="Verify"; }).length;
     var submittedCount = list.filter(function(i){ return i.status==="Submitted A85"; }).length;
-    var bySite = {}; list.forEach(function(i){ (bySite[i.site] = bySite[i.site] || []).push(i); });
-    var sites = Object.keys(bySite).sort();
-    return '<div class="region-hdr" style="--rc:'+REGION_COLORS[r]+'">'+
-      '<span class="region-name">'+r+'</span>'+
-      '<span class="region-meta">'+sites.length+' site'+(sites.length!==1?'s':'')+
-      ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' verify' : '')+(submittedCount ? ' · '+submittedCount+' A85' : '')+'</span></div>'+
+    return '<span class="region-meta">'+nSites+' site'+(nSites!==1?'s':'')+
+      ' · '+list.length+' issue'+(list.length!==1?'s':'')+' · '+openCount+' open'+(verifyCount ? ' · '+verifyCount+' verify' : '')+(submittedCount ? ' · '+submittedCount+' A85' : '')+'</span>';
+  }
+  var html = "";
+  if(prioIssues.length){                         // flagged sites come first, ahead of every region
+    var pb = bySiteOf(prioIssues);
+    var ps = Object.keys(pb).sort(function(a, b){
+      var d = REGION_ORDER.indexOf(getRegion(a)) - REGION_ORDER.indexOf(getRegion(b));
+      return d || (a < b ? -1 : a > b ? 1 : 0);
+    });
+    html += '<div class="region-hdr prio-hdr" style="--rc:#FF8A00"><span class="region-name"><svg class="hdr-flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c.5 3.3 3.3 5 4.9 7.9 1.7 3.1 1.1 7.6-2.1 10C13.6 21 12.8 21.3 12 21.3s-1.6-.3-2.8-1.2c-3.200-2.400-3.900-6.900-2.200-10 .6-1.100 1.200-1.800 1.800-2.600.6 1.800 1.400 2.500 2.300 2.600C10.700 6.800 11 4.100 12 2.200z" fill="url(#flameGrad)" stroke="#FF5A1F" stroke-width=".8"/><path d="M12 21.300c-2.300 0-3.900-1.600-3.900-3.700 0-1.900 1.500-3.200 2.500-4.800.4 1 1 1.600 1.600 2 .3-.6.4-1.200.3-1.900 1.600 1.200 3.400 2.600 3.400 4.700 0 2.100-1.600 3.700-3.900 3.700z" fill="#FFE79A"/></svg>PRIORITY</span>'+metaHtml(prioIssues, ps.length)+'</div>'+
+      ps.map(function(site){ var r = getRegion(site); return siteBlock(site, pb[site], REGION_COLORS[r], r); }).join("");
+  }
+  html += REGION_ORDER.filter(function(r){ return groups[r].length>0; }).map(function(r){
+    var list = groups[r], bySite = bySiteOf(list), sites = Object.keys(bySite).sort();
+    return '<div class="region-hdr" style="--rc:'+REGION_COLORS[r]+'"><span class="region-name">'+r+'</span>'+metaHtml(list, sites.length)+'</div>'+
       sites.map(function(site){ return siteBlock(site, bySite[site], REGION_COLORS[r]); }).join("");
-  }).join("") + '</div>';
+  }).join("");
+  el.innerHTML = '<div class="list-inner">' + html + '</div>';
+  Array.prototype.forEach.call(el.querySelectorAll(".prio-btn"), function(btn){
+    btn.addEventListener("click", function(e){ e.stopPropagation(); togglePriority(btn.getAttribute("data-prio-site")); });
+  });
   Array.prototype.forEach.call(el.querySelectorAll(".site-resolve"), function(btn){
     btn.addEventListener("click", function(){ openSiteResolve(btn.getAttribute("data-resolve-site")); });
   });
@@ -1142,8 +1252,57 @@ function issueGroup(iss){
   return found;
 }
 buildGroupRegexes();
+// ---- site priority: one flag per site, set by tapping the flame ----
+// Shared mode: one tiny record per flagged site (so two people flagging different sites never overwrite each other),
+// kept beside the issues but never treated as an issue. Local-only mode: kept on this phone.
+var PRIO_PREFIX = "_prio_", PRIO_LS = "sitetrack_priority_v1", prioSites = {};
+function siteKey(s){ return String(s||"").trim().toUpperCase(); }
+function isPriority(site){ return !!prioSites[siteKey(site)]; }
+function prioDocRef(key){ return db.collection(COLLECTION).doc(PRIO_PREFIX + encodeURIComponent(key)); }
+function cachePrio(){ try{ localStorage.setItem(PRIO_LS, JSON.stringify(Object.keys(prioSites))); }catch(e){} }
+function loadPrio(){
+  prioSites = {};
+  try{ var a = JSON.parse(localStorage.getItem(PRIO_LS) || "[]"); if(Array.isArray(a)) a.forEach(function(k){ k = siteKey(k); if(k) prioSites[k] = true; }); }catch(e){}
+}
+function togglePriority(site){
+  var key = siteKey(site); if(!key) return;
+  var on = !prioSites[key];
+  if(on) prioSites[key] = true; else delete prioSites[key];
+  cachePrio(); refreshAll(false);
+  showToast(on ? key+" marked as priority — it's now at the top of the list" : "Priority removed from "+key);
+  if(FIREBASE_ENABLED){
+    var op = on ? prioDocRef(key).set({ site: key, at: Date.now(), by: isAdmin() ? "admin" : (currentUser||"") }) : prioDocRef(key).delete();
+    op.catch(function(err){
+      console.error(err);
+      if(on) delete prioSites[key]; else prioSites[key] = true;           // put it back as it was
+      cachePrio(); refreshAll(false);
+      showToast("Couldn't save for everyone — priority not changed");
+    });
+  }
+}
+function restorePriority(list){
+  var keys = [];
+  list.forEach(function(k){ k = siteKey(k); if(k && !prioSites[k] && keys.indexOf(k)===-1) keys.push(k); });
+  if(!keys.length) return;
+  if(FIREBASE_ENABLED){
+    commitInBatches(keys.map(function(k){ return { ref: prioDocRef(k), data: { site: k, at: Date.now(), by: "admin" } }; }));
+  }else{
+    keys.forEach(function(k){ prioSites[k] = true; }); cachePrio(); refreshAll(false);
+  }
+}
+// the flame button beside the search box: shows how many sites are flagged; tap to show only those sites
+function renderPrioFilter(){
+  var seen = {}; issues.forEach(function(i){ if(isPriority(i.site)) seen[siteKey(i.site)] = 1; });
+  var btn = document.getElementById("prioFilterBtn");
+  document.getElementById("prioFilterCount").textContent = Object.keys(seen).length;
+  btn.classList.toggle("on", priorityOnly);
+  btn.setAttribute("aria-pressed", priorityOnly ? "true" : "false");
+  var t = priorityOnly ? "Showing priority sites only — tap to show all" : "Show priority sites only";
+  btn.title = t; btn.setAttribute("aria-label", t);
+}
+document.getElementById("prioFilterBtn").addEventListener("click", function(){ priorityOnly = !priorityOnly; refreshAll(true); });
 // ---- editing the words on the page (admin only) ----
-var grpEditMode = false, grpDraft = {};
+var grpEditMode = false, grpDraft = {}, grpOpen = {};      // grpOpen: which group cards the person has opened
 function groupSnapshot(){ var m = {}; issues.forEach(function(i){ m[i.id] = issueGroup(i); }); return m; }
 function countMoved(before){ var n = 0; issues.forEach(function(i){ if(before[i.id] !== issueGroup(i)) n++; }); return n; }
 // Applies a new set of words everywhere at once; if the shared save is refused, puts everything back as it was.
@@ -1251,7 +1410,8 @@ function renderGroups(){
   });
 
   var admin = isAdmin(), editing = admin && grpEditMode;
-  var tog = document.getElementById("grpEditToggle"); tog.style.display = admin ? "" : "none"; tog.textContent = editing ? "✓ Done" : "✎ Edit words";
+  var tog = document.getElementById("grpEditToggle"); tog.style.display = admin ? "" : "none"; tog.textContent = admin ? (editing ? "✓ Done" : "✎ Edit words") : "";      // labels exist only for the admin
+  document.getElementById("grpReset").textContent = editing ? "Reset all groups to the built-in words" : "";
   document.getElementById("grpResetWrap").style.display = editing ? "" : "none";
   var mapEl = document.getElementById("grpMapping"), ae = document.activeElement;
   var focusG = (ae && ae.classList && ae.classList.contains("wadd-input")) ? ae.getAttribute("data-g") : null;   // keep typing across refreshes
@@ -1260,7 +1420,9 @@ function renderGroups(){
     var d = data[n], words = ISSUE_GROUPS[idx].words, isOther = idx===names.length-1;
     var descs = Object.keys(d.desc).sort(function(a,b){ return d.desc[b]-d.desc[a] || (a<b ? -1 : 1); });
     var wordsHtml;
-    if(isOther){
+    if(!admin){
+      wordsHtml = "";                    // the words behind the groups are the admin's setting: not shown (not even hidden) for anyone else
+    }else if(isOther){
       wordsHtml = '<div class="grp-words">Everything that matches no other group'+(editing ? ' — pick “Move to…” on a description to give it a group.' : '')+'</div>';
     }else if(editing){
       wordsHtml = '<div class="wchips">'+(words.length ? words.map(function(w){
@@ -1275,9 +1437,20 @@ function renderGroups(){
         (isOther && editing ? '<select class="assign-sel" data-desc="'+esc(x)+'"><option value="">Move to…</option>'+optHtml+'</select>' : '')+
         '<span class="n">×'+d.desc[x]+'</span></span></div>';
     }).join("") : '<div class="grp-desc none">No issues</div>';
-    return '<div class="grp-card'+(groupFilter===n ? ' sel' : '')+'">'+
-      '<div class="grp-hdr"><span>'+esc(n)+'</span><span class="n">'+d.total+'</span></div>'+wordsHtml+rows+'</div>';
+    var open = editing || !!grpOpen[n];                  // editing shows everything
+    return '<div class="grp-card'+(groupFilter===n ? ' sel' : '')+(open ? ' open' : '')+'" data-g="'+esc(n)+'">'+
+      '<div class="grp-hdr" role="button" tabindex="0"><span>'+esc(n)+'</span><span class="right"><span class="n">'+d.total+'</span><span class="caret">▾</span></span></div>'+
+      '<div class="grp-body">'+wordsHtml+rows+'</div></div>';
   }).join("");
+  Array.prototype.forEach.call(mapEl.querySelectorAll(".grp-hdr"), function(h){
+    function toggle(){
+      if(editing) return;
+      var card = h.parentNode, g = card.getAttribute("data-g");
+      grpOpen[g] = !grpOpen[g]; card.classList.toggle("open", !!grpOpen[g]);
+    }
+    h.addEventListener("click", toggle);
+    h.addEventListener("keydown", function(e){ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); toggle(); } });
+  });
   Array.prototype.forEach.call(mapEl.querySelectorAll(".wchip button"), function(b){
     b.addEventListener("click", function(){ removeGroupWord(b.getAttribute("data-g"), b.getAttribute("data-w")); });
   });
@@ -2352,10 +2525,10 @@ function download(filename, blob){
 }
 document.getElementById("mCsv").addEventListener("click", function(){
   var rows = getVisible();
-  var lines = ["ID,Site,Region,Issue,Category,Issue Group,Status,Plan Date,Logged At"];
+  var lines = ["ID,Site,Region,Priority,Issue,Category,Issue Group,Status,Plan Date,Logged At"];
   rows.forEach(function(iss){
     var d = new Date(iss.ts).toISOString().slice(0,19).replace("T"," ");
-    var vals = [iss.id, iss.site, getRegion(iss.site), '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", issueGroup(iss), iss.status, iss.planDate||"", d];
+    var vals = [iss.id, iss.site, getRegion(iss.site), isPriority(iss.site) ? "Yes" : "No", '"'+iss.issue.replace(/"/g,'""')+'"', iss.category||"", issueGroup(iss), iss.status, iss.planDate||"", d];
     lines.push(vals.join(","));
   });
   download("ops_site_issue_acceptance.csv", new Blob([lines.join("\n")], {type:"text/csv"}));
@@ -2366,6 +2539,7 @@ document.getElementById("mBackup").addEventListener("click", function(){
   // a backup should be a full snapshot, not a partial view.
   var payload = {
     app: "OPS Site Issue Acceptance", backupVersion: 1, exportedAt: new Date().toISOString(),
+    prioritySites: Object.keys(prioSites).sort(),
     issues: issues.map(function(iss){
       return { id: iss.id, site: iss.site, issue: iss.issue, status: iss.status,
         ts: iss.ts, updated: iss.updated || iss.ts, progress: iss.progress || [], owner: iss.owner || "Unknown", planDate: iss.planDate || "", category: iss.category || "" };
@@ -2376,9 +2550,41 @@ document.getElementById("mBackup").addEventListener("click", function(){
   showToast("Backed up "+payload.issues.length+" issues");
 });
 var ADMIN_NAME = "ZASSSAH";      // the only place the admin name is written (always upper case)
-function isAdmin(){
-  return (currentUser||"").trim().toUpperCase() === ADMIN_NAME;
+// ADMIN-AUTH-BEGIN
+// The admin signs in with a PASSWORD. The password itself is NOT in this file, only a one-way fingerprint of it:
+// a salted, deliberately slow hash (PBKDF2) that is then hashed once more. It cannot be turned back into the password,
+// and it cannot be used as a sign-in. To change the password use: Admin sign-in → "Set up or change the admin password",
+// then replace these two lines with the ones it gives you.
+var ADMIN_SALT = "7407ce6cf80a7cbb378a76dc3aef8f26";
+var ADMIN_VERIFIER = "18fdd670a7b5d65d5e56a288e9d31399bdf41425822b0ac0691b1ae1d667a250";
+// ADMIN-AUTH-END
+var ADMIN_ITER = 600000, ADMIN_KEY = "sitetrack_adminkey_v1", adminUnlocked = false;
+function isAdminName(n){ return String(n||"").trim().toUpperCase() === ADMIN_NAME; }
+function isAdmin(){ return adminUnlocked && isAdminName(currentUser); }
+function cryptoOK(){ return !!(window.crypto && window.crypto.subtle && window.TextEncoder); }
+function hexToBytes(h){ var a = new Uint8Array(h.length/2); for(var i=0;i<a.length;i++) a[i] = parseInt(h.substr(i*2,2),16); return a; }
+function bytesToHex(b){ var s = ""; for(var i=0;i<b.length;i++) s += (b[i]<16 ? "0" : "")+b[i].toString(16); return s; }
+// password + salt -> the secret key (PBKDF2-SHA256, slow on purpose so guessing is expensive)
+function deriveAdminKey(password, saltHex){
+  return crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]).then(function(k){
+    return crypto.subtle.deriveBits({ name:"PBKDF2", hash:"SHA-256", salt:hexToBytes(saltHex), iterations:ADMIN_ITER }, k, 256);
+  }).then(function(bits){ return bytesToHex(new Uint8Array(bits)); });
 }
+function sha256Hex(text){ return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function(b){ return bytesToHex(new Uint8Array(b)); }); }
+// Is this the key the fingerprint in the file was made from? (The fingerprint is a hash OF the key, so it can't be replayed as one.)
+function adminKeyValid(key){
+  if(!ADMIN_VERIFIER || !/^[0-9a-f]{64}$/.test(String(key||"")) || !cryptoOK()) return Promise.resolve(false);
+  return sha256Hex(key).then(function(v){ return v === ADMIN_VERIFIER; });
+}
+function adminSignIn(password){
+  return deriveAdminKey(password, ADMIN_SALT).then(function(key){
+    return adminKeyValid(key).then(function(ok){
+      if(ok){ try{ localStorage.setItem(ADMIN_KEY, key); }catch(e){} adminUnlocked = true; }
+      return ok;
+    });
+  });
+}
+function clearAdminKey(){ adminUnlocked = false; try{ localStorage.removeItem(ADMIN_KEY); }catch(e){} }
 document.getElementById("mRestore").addEventListener("click", function(){
   if(!isAdmin()){ showToast("Only the admin can restore from backup"); return; }
   document.getElementById("restoreFileInput").click();
@@ -2414,6 +2620,7 @@ document.getElementById("restoreFileInput").addEventListener("change", function(
     );
     if(!ok) return;
     restoreIssues(valid);
+    if(!Array.isArray(data) && Array.isArray(data.prioritySites)) restorePriority(data.prioritySites);
   };
   reader.readAsText(file);
 });
@@ -2610,6 +2817,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
   var rowsXml = ['<Row><Cell ss:StyleID="header"><Data ss:Type="String">ID</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Site</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Priority</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Category</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Issue Group</Data></Cell>'+
@@ -2633,6 +2841,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
       '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
+      '<Cell><Data ss:Type="String">'+(isPriority(iss.site) ? "Yes" : "No")+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.issue)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(iss.category||"")+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(issueGroup(iss))+'</Data></Cell>'+
@@ -2651,6 +2860,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
   var progRowsXml = ['<Row><Cell ss:StyleID="header"><Data ss:Type="String">Issue ID</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Site</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Region</Data></Cell>'+
+    '<Cell ss:StyleID="header"><Data ss:Type="String">Priority</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Update Time</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">By</Data></Cell>'+
     '<Cell ss:StyleID="header"><Data ss:Type="String">Note</Data></Cell></Row>'];
@@ -2662,6 +2872,7 @@ document.getElementById("mExcel").addEventListener("click", function(){
         '<Cell><Data ss:Type="String">'+esc(iss.id)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(iss.site)+'</Data></Cell>'+
       '<Cell><Data ss:Type="String">'+esc(getRegion(iss.site))+'</Data></Cell>'+
+        '<Cell><Data ss:Type="String">'+(isPriority(iss.site) ? "Yes" : "No")+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(pd)+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(p.by||"Unknown")+'</Data></Cell>'+
         '<Cell><Data ss:Type="String">'+esc(p.note)+'</Data></Cell></Row>');
@@ -2759,9 +2970,10 @@ function refreshRegionSelect(){
 function refreshSiteSelect(){
   refreshRegionSelect();
   var sel = document.getElementById("siteSelect");
-  var sites = ["All Sites"].concat(getSiteList());
+  var all = getSiteList(), list = all.filter(isPriority).concat(all.filter(function(x){ return !isPriority(x); }));   // priority sites first
+  var sites = ["All Sites"].concat(list);
   var cur = siteFilter;
-  sel.innerHTML = sites.map(function(s){ return '<option'+(s===cur?" selected":"")+'>'+esc(s)+'</option>'; }).join("");
+  sel.innerHTML = sites.map(function(s){ return '<option value="'+esc(s)+'"'+(s===cur?" selected":"")+'>'+(s!=="All Sites" && isPriority(s) ? "🔥 " : "")+esc(s)+'</option>'; }).join("");
   if(sites.indexOf(cur)<0){ siteFilter="All Sites"; sel.value="All Sites"; }
 }
 function refreshStats(){
@@ -2776,6 +2988,7 @@ function refreshStats(){
   document.getElementById("statTotal").textContent = issues.length;
 }
 function refreshAll(refit){
+  renderPrioFilter();
   refreshSiteSelect();
   refreshStats();
   renderList();
@@ -2799,6 +3012,9 @@ function saveUsername(name){
   currentUser = name;
   try{ localStorage.setItem(USER_KEY, name); }catch(e){}
   document.getElementById("userChip").textContent = "👤 "+name;
+  if(!isAdminName(name)) clearAdminKey();      // handing the phone to someone else ends the admin session
+  grpEditMode = false;          // the new person may not be allowed to edit…
+  refreshAll(false);            // …and anything admin-only on screen (like the group words) must be redrawn for them
 }
 function clearUsername(){
   currentUser = null;
@@ -2812,18 +3028,35 @@ function clearUsername(){
 // shared backend) any name is accepted, same as before this feature.
 function checkUserApproved(name, callback){
   var normalized = name.trim().toUpperCase();
-  if(normalized === ADMIN_NAME){ callback(true); return; }
+  if(normalized === ADMIN_NAME){ callback(false); return; }       // the admin signs in with the password, never by name
   if(!FIREBASE_ENABLED){ callback(true); return; }
   db.collection(USERS_COLLECTION).doc(normalized).get()
     .then(function(doc){ callback(doc.exists); })
     .catch(function(err){ console.error(err); callback(false, "Could not verify — check connection"); });
 }
 
+var adminMode = false, gateTitle = "Who's this?";
+function setAdminMode(on){
+  adminMode = on;
+  document.getElementById("userOverlayTitle").textContent = on ? "Admin sign-in" : gateTitle;
+  document.getElementById("userNameWrap").style.display = on ? "none" : "";
+  document.getElementById("adminPassRow").style.display = on ? "" : "none";
+  document.getElementById("adminSetupLink").style.display = on ? "" : "none";
+  document.getElementById("adminModeLink").textContent = on ? "← Back to normal sign-in" : "Admin sign-in";
+  document.getElementById("userSave").textContent = on ? "Sign in as admin" : "Continue";
+  document.getElementById("userHelp").textContent = on ? "Enter the admin password." : "Enter your name so issues you log are attributed to you.";
+  document.getElementById("userNameError").style.display = "none";
+  var pass = document.getElementById("adminPassInput"); pass.value = ""; pass.type = "password";
+  document.getElementById("adminPassToggle").textContent = "Show";
+  setTimeout(function(){ (on ? pass : document.getElementById("userNameInput")).focus(); }, 60);
+}
 function openUserGate(mandatory){
   var overlay = document.getElementById("userOverlay");
   var cancelBtn = document.getElementById("userCancel");
-  document.getElementById("userOverlayTitle").textContent = mandatory ? "Who's this?" : "Change your name";
-  document.getElementById("userNameInput").value = currentUser || "";
+  setAdminMode(false);
+  gateTitle = mandatory ? "Who's this?" : "Change your name";
+  document.getElementById("userOverlayTitle").textContent = gateTitle;
+  document.getElementById("userNameInput").value = isAdminName(currentUser) ? "" : (currentUser || "");
   document.getElementById("userNameError").style.display = "none";
   cancelBtn.style.display = mandatory ? "none" : "block";
   overlay.classList.add("show");
@@ -2838,10 +3071,57 @@ document.getElementById("userCancel").addEventListener("click", function(){
 document.getElementById("userOverlay").addEventListener("click", function(e){
   if(e.target===this && this.getAttribute("data-mandatory")!=="1") this.classList.remove("show");
 });
+document.getElementById("adminSetupLink").addEventListener("click", function(){
+  ["setupPass","setupPass2"].forEach(function(id){ document.getElementById(id).value = ""; });
+  document.getElementById("setupError").style.display = "none"; document.getElementById("setupResult").style.display = "none";
+  document.getElementById("adminSetupOverlay").classList.add("show");
+});
+document.getElementById("setupClose").addEventListener("click", function(){ document.getElementById("adminSetupOverlay").classList.remove("show"); });
+document.getElementById("setupGo").addEventListener("click", function(){
+  var p1 = document.getElementById("setupPass").value, p2 = document.getElementById("setupPass2").value, err = document.getElementById("setupError");
+  function fail(m){ err.textContent = m; err.style.display = "block"; document.getElementById("setupResult").style.display = "none"; }
+  err.style.display = "none";
+  document.getElementById("setupResult").style.display = "none";           // never leave an old result showing while a new one is made
+  if(!cryptoOK()){ fail("This needs a secure (https) page."); return; }
+  if(p1.length < 10){ fail("Use at least 10 characters — the fingerprint is public, so a short password could be guessed."); return; }
+  if(p1 !== p2){ fail("The two passwords don't match."); return; }
+  var go = document.getElementById("setupGo"); go.disabled = true; go.textContent = "Working…";
+  var salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+  deriveAdminKey(p1, salt).then(function(key){ return sha256Hex(key); }).then(function(verifier){
+    go.disabled = false; go.textContent = "Create";
+    document.getElementById("setupOut").value = 'var ADMIN_SALT = "'+salt+'";\nvar ADMIN_VERIFIER = "'+verifier+'";';
+    document.getElementById("setupResult").style.display = "";
+  }, function(e){ console.error(e); go.disabled = false; go.textContent = "Create"; fail("Could not create it on this device."); });
+});
+document.getElementById("setupCopy").addEventListener("click", function(){
+  var t = document.getElementById("setupOut"); t.select();
+  try{ navigator.clipboard.writeText(t.value).then(function(){ showToast("Copied"); }, function(){ document.execCommand("copy"); showToast("Copied"); }); }catch(e){ try{ document.execCommand("copy"); showToast("Copied"); }catch(e2){} }
+});
+document.getElementById("adminModeLink").addEventListener("click", function(){ setAdminMode(!adminMode); });
+document.getElementById("adminPassToggle").addEventListener("click", function(){
+  var pass = document.getElementById("adminPassInput"), show = pass.type==="password";
+  pass.type = show ? "text" : "password"; this.textContent = show ? "Hide" : "Show";
+});
+document.getElementById("adminPassInput").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("userSave").click(); });
 document.getElementById("userSave").addEventListener("click", function(){
-  var name = document.getElementById("userNameInput").value.trim();
   var errEl = document.getElementById("userNameError");
   errEl.style.display = "none";
+  if(adminMode){
+    var pw = document.getElementById("adminPassInput").value;                    // passwords are never trimmed
+    if(!pw){ showToast("Enter the admin password"); return; }
+    if(!cryptoOK()){ errEl.textContent = "Admin sign-in needs a secure (https) page."; errEl.style.display = "block"; return; }
+    if(!ADMIN_VERIFIER){ errEl.textContent = "No admin password has been set up yet — use “Set up or change the admin password” below."; errEl.style.display = "block"; return; }
+    var btn = document.getElementById("userSave"); btn.textContent = "Checking..."; btn.disabled = true;
+    adminSignIn(pw).then(function(ok){
+      btn.disabled = false; btn.textContent = "Sign in as admin";
+      if(!ok){ errEl.textContent = "Wrong password."; errEl.style.display = "block"; document.getElementById("adminPassInput").value = ""; return; }
+      saveUsername(ADMIN_NAME);
+      document.getElementById("userOverlay").classList.remove("show");
+      showToast("Signed in as admin");
+    }, function(err){ console.error(err); btn.disabled = false; btn.textContent = "Sign in as admin"; errEl.textContent = "Could not check the password on this device."; errEl.style.display = "block"; });
+    return;
+  }
+  var name = document.getElementById("userNameInput").value.trim();
   if(!name){ showToast("Enter your name to continue"); return; }
   var saveBtn = document.getElementById("userSave");
   saveBtn.textContent = "Checking...";
@@ -3019,12 +3299,24 @@ document.getElementById("planScroll").addEventListener("scroll", function(){ pla
 
 // ───────────────────────── init ─────────────────────────
 loadGroupRules();
+loadPrio();
 loadAll();
 loadUsername();
 refreshAll(true);
 document.getElementById("syncBadge").textContent = FIREBASE_ENABLED
   ? "🟢 LIVE — SHARED WITH EVERYONE" : "LOCAL ONLY";
-if(currentUser){
+if(currentUser && isAdminName(currentUser)){
+  // the admin: the phone must still hold the key the fingerprint was made from (changing the password or tampering signs them out)
+  document.getElementById("userChip").textContent = "👤 "+currentUser;
+  var storedKey = null; try{ storedKey = localStorage.getItem(ADMIN_KEY); }catch(e){}
+  adminKeyValid(storedKey).then(function(ok){
+    if(ok){ adminUnlocked = true; refreshAll(false); return; }
+    clearUsername(); clearAdminKey();
+    document.getElementById("userChip").textContent = "👤 Set name";
+    showToast("Please sign in again");
+    openUserGate(true);
+  });
+}else if(currentUser){
   document.getElementById("userChip").textContent = "👤 "+currentUser;
   // Re-validate in the background in case an admin removed this user since
   // their last visit — doesn't block the UI while this resolves.
