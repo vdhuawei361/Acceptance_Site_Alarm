@@ -1638,6 +1638,7 @@ function niceStep(max){
   return 1000;
 }
 var PLAN_STACK = ["Open","Verify","Submitted A85","Resolved","Cancelled"];
+var SITE_BAR_COLOR = "#CFE0FF";
 
 function renderPlan(){
   syncPlanControls();
@@ -1645,9 +1646,11 @@ function renderPlan(){
   var dated = base.filter(function(i){ return i.planDate; });
   var today = todayStr(), counts = {};
   dated.forEach(function(i){
-    var c = counts[i.planDate] || (counts[i.planDate] = { total:0 });
+    var c = counts[i.planDate] || (counts[i.planDate] = { total:0, siteSet:{} });
     c.total++; c[i.status] = (c[i.status]||0)+1;
+    c.siteSet[siteKey(i.site)] = 1;                                // same site written in different capitals is one site
   });
+  Object.keys(counts).forEach(function(d){ counts[d].sites = Object.keys(counts[d].siteSet).length; });
   var dates = Object.keys(counts).sort();
   var overdue = dated.filter(function(i){ return i.planDate<today && isOpenWork(i.status); }).length;
   var summary = '<span class="plan-pill"><b>'+dated.length+'</b> planned</span>';
@@ -1657,7 +1660,7 @@ function renderPlan(){
   document.getElementById("planSummary").innerHTML = summary;
   document.getElementById("planLegend").innerHTML = PLAN_STACK.map(function(st){
     return '<span><i style="background:'+STATUS[st].color+'"></i>'+st+'</span>';
-  }).join("");
+  }).join("") + '<span title="The slim bar beside each issue bar: how many different sites that date covers"><i style="background:'+SITE_BAR_COLOR+'"></i>Sites</span>';
 
   var wrap = document.getElementById("planChartWrap"), note = document.getElementById("planChartNote");
   var axis = document.getElementById("planAxis"), plot = document.getElementById("planPlot"), scroller = document.getElementById("planScroll");
@@ -1679,10 +1682,10 @@ function renderPlan(){
     for(var d0=s0, guard=0; d0<=e0 && guard<400; d0=dateAdd(d0,1), guard++) axisDates.push(d0);
   }
   note.textContent = compact
-    ? "The range is wider than 120 days, so only dates that have issues are shown. Tap a bar to list that date."
-    : "Tap a bar to list that date's issues. The dashed line is today; shaded columns are weekends.";
+    ? "The range is wider than 120 days, so only dates that have issues are shown. Tap a bar to list that date. Left bar: issues by status · slim right bar: number of sites."
+    : "Tap a bar to list that date's issues. Left bar: issues by status · slim right bar: number of sites. The dashed line is today; shaded columns are weekends.";
 
-  var H = 214, TOP = 24, BOT = 40, plotH = H-TOP-BOT, STEP = 34, BARW = 24, PAD = 8;
+  var H = 214, TOP = 24, BOT = 40, plotH = H-TOP-BOT, STEP = 38, BARW = 18, SBARW = 12, BGAP = 2, PAD = 8;
   var maxT = 0; dates.forEach(function(d){ maxT = Math.max(maxT, counts[d].total); });
   var stepY = niceStep(maxT), yMax = Math.ceil(maxT/stepY)*stepY;
   function Y(v){ return TOP + plotH*(1 - v/yMax); }
@@ -1698,7 +1701,7 @@ function renderPlan(){
   var single = planFilter.mode==="range" && planFilter.from && planFilter.from===planFilter.to ? planFilter.from : null;
   var curYear = today.slice(0,4), prevMonth = "";
   axisDates.forEach(function(d, i){
-    var x0 = PAD + i*STEP, bx = x0 + (STEP-BARW)/2, c = counts[d];
+    var x0 = PAD + i*STEP, bx = x0 + (STEP-(BARW+BGAP+SBARW))/2, sx = bx + BARW + BGAP, c = counts[d];
     var dow = new Date(utcOf(d)).getUTCDay();
     if(!compact && (dow===0 || dow===6))
       plot.appendChild(svgEl("rect",{x:x0, y:TOP, width:STEP, height:plotH, fill:"rgba(255,255,255,.03)"}));
@@ -1710,11 +1713,15 @@ function renderPlan(){
       PLAN_STACK.forEach(function(st){
         var n = c[st]||0; if(!n) return;
         var y1 = Y(cum+n), y2 = Y(cum);
-        plot.appendChild(svgEl("rect",{x:bx, y:y1, width:BARW, height:Math.max(1,y2-y1), rx:3, fill:STATUS[st].color, opacity:dim, stroke:"#0B1322", "stroke-width":1}));
+        plot.appendChild(svgEl("rect",{x:bx, y:y1, width:BARW, height:Math.max(1,y2-y1), rx:3, fill:STATUS[st].color, opacity:dim, stroke:"#0B1322", "stroke-width":1, "data-bar":"issues", "data-date":d}));
         cum += n;
       });
-      var tl = svgEl("text",{x:bx+BARW/2, y:Y(c.total)-5, "text-anchor":"middle", fill:"#E7EEF9", "font-size":10, "font-weight":700, "font-family":"var(--mono)", opacity:dim});
+      var tl = svgEl("text",{x:bx+BARW/2, y:Y(c.total)-5, "text-anchor":"middle", fill:"#E7EEF9", "font-size":10, "font-weight":700, "font-family":"var(--mono)", opacity:dim, "data-label":"issues", "data-date":d});
       tl.textContent = c.total; plot.appendChild(tl);
+      // the slim bar beside it: how many different sites that date covers (same height scale: sites can't outnumber issues)
+      plot.appendChild(svgEl("rect",{x:sx, y:Y(c.sites), width:SBARW, height:Math.max(1,Y(0)-Y(c.sites)), rx:3, fill:SITE_BAR_COLOR, opacity:dim*0.92, stroke:"#0B1322", "stroke-width":1, "data-bar":"sites", "data-date":d}));
+      var sl = svgEl("text",{x:sx+SBARW/2, y:Y(c.sites)-5, "text-anchor":"middle", fill:SITE_BAR_COLOR, "font-size":9, "font-weight":700, "font-family":"var(--mono)", opacity:dim, "data-label":"sites", "data-date":d});
+      sl.textContent = c.sites; plot.appendChild(sl);
     }
     if(single===d)
       plot.appendChild(svgEl("rect",{x:x0+1, y:TOP-14, width:STEP-2, height:plotH+14+BOT-6, rx:6, fill:"none", stroke:"#37D6C4", "stroke-width":1.4}));
@@ -1732,6 +1739,7 @@ function renderPlan(){
     prevMonth = mKey;
     var hit = svgEl("rect",{x:x0, y:0, width:STEP, height:H, fill:"transparent", style:"cursor:pointer"});
     hit.addEventListener("click", function(){ setPlanDate(d); });
+    if(c){ var tip = svgEl("title",{}); tip.textContent = fmtPlan(d)+": "+c.total+" issue"+(c.total!==1?"s":"")+" at "+c.sites+" site"+(c.sites!==1?"s":""); hit.appendChild(tip); }
     plot.appendChild(hit);
   });
 
