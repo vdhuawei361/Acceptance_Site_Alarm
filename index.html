@@ -53,6 +53,17 @@
     color:var(--accent); display:flex; align-items:center; justify-content:center;
     box-shadow:inset 0 1px 0 var(--borderHi), 0 3px 8px var(--shadow);}
   .stats{display:flex; gap:6px; margin-top:10px;}
+  .aging{display:flex; gap:6px; margin-top:6px;}
+  .ag{flex:1 1 0; min-width:0; border-radius:10px; padding:4px 8px 5px; border:1px solid var(--border); text-align:left;}
+  .ag.cv{background:var(--verifyFill); border-color:rgba(110,168,255,.35);}
+  .ag.vr{background:var(--closedFill); border-color:rgba(51,209,122,.35);}
+  .ag .l{font-size:8px; letter-spacing:.6px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:clip;}
+  .ag .v{display:flex; align-items:baseline; gap:5px; white-space:nowrap; overflow:hidden; margin-top:1px;}
+  .ag .v b{font-family:var(--mono); font-size:16px; font-weight:800; line-height:1.15;}
+  .ag.cv .v b{color:var(--verify); text-shadow:0 0 10px rgba(110,168,255,.4);}
+  .ag.vr .v b{color:var(--closed); text-shadow:0 0 10px rgba(51,209,122,.4);}
+  .ag .u{font-size:9px; color:var(--subtext);}
+  @media (max-width:380px){ .ag .l{font-size:7px; letter-spacing:.3px;} .ag{padding:4px 6px 5px;} }
   .stat{flex:1; text-align:center; border-radius:10px; padding:6px 4px; border:1px solid;
     position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px var(--shadow);}
   .stat .n{font-size:18px; font-weight:800; line-height:1.1; font-family:var(--mono);}
@@ -445,6 +456,10 @@
     <div class="stat submitted"><div class="n" id="statSubmitted">0</div><div class="l"><span class="lfull">SUBMITTED A85</span><span class="lshort">A85</span></div></div>
     <div class="stat resolved"><div class="n" id="statResolved">0</div><div class="l">RESOLVED</div></div>
     <div class="stat total"><div class="n" id="statTotal">0</div><div class="l" id="statTotalLabel">TOTAL</div></div>
+  </div>
+  <div class="aging">
+    <div class="ag cv" id="agCV"><div class="l">AVG · CREATE → VERIFY</div><div class="v"><b id="agCVv">—</b><span class="u" id="agCVu">no data yet</span></div></div>
+    <div class="ag vr" id="agVR"><div class="l">AVG · VERIFY → RESOLVE</div><div class="v"><b id="agVRv">—</b><span class="u" id="agVRu">no data yet</span></div></div>
   </div>
 </header>
 
@@ -931,7 +946,7 @@ function updateIssueData(id, site, text, planDate, category){
 // same A85 decision at once.
 function changeStatus(id, from, to, note, doneMsg){
   var now = Date.now();
-  var entry = { ts: now, note: note, by: currentUser || "Unknown", kind: "status" };
+  var entry = { ts: now, note: note, by: currentUser || "Unknown", kind: "status", from: from, to: to };
   if(FIREBASE_ENABLED){
     var ref = db.collection(COLLECTION).doc(id);
     db.runTransaction(function(tx){
@@ -1075,6 +1090,52 @@ function isStatusLog(p){
   if(p && p.kind === "note") return false;
   var t = String((p && p.note) || "").trim();
   return STATUS_LOG_RES.some(function(re){ return re.test(t); });
+}
+// Which status did this status log move the issue TO? New entries say so (to:); older ones are recognised by their fixed wording.
+function statusTargetOf(p){
+  if(p && p.to) return p.to;
+  var t = String((p && p.note) || "").trim().toLowerCase(), m;
+  if(/^sent for verification\.?$/.test(t)) return "Verify";
+  if(/^verif(y|ication) passed\s*(→|->)\s*submitted a85/.test(t)) return "Submitted A85";
+  if(/^verif(y|ication) passed\s*(→|->)\s*(closed|resolved)/.test(t)) return "Resolved";
+  if(/^a85 passed\s*(→|->)/.test(t)) return "Resolved";
+  if(/^(verif(y|ication)|a85) failed\s*(→|->)/.test(t)) return "Open";
+  if(/^reopened\.?$/.test(t)) return "Open";
+  if((m = t.match(/^status changed to (\w+)/))) return (m[1]==="closed"||m[1]==="resolved") ? "Resolved" : ((m[1]==="verification"||m[1]==="verify") ? "Verify" : (m[1]==="open" ? "Open" : null));
+  if(/^site resolved:/.test(t)) return "Resolved";
+  if(/^cancell?ed\b/.test(t)) return "Cancelled";
+  return null;
+}
+// Average aging in days, from the timeline:
+//   create → verify   = created until the FIRST time it was sent to Verify (every issue that has been sent to Verify)
+//   verify → resolve  = that first Verify until it was finally Resolved (issues that are Resolved now and went through Verify)
+// Together they add up to the whole life of an issue, rework included. Cancelled issues, issues resolved with "Resolve all"
+// (no Verify step) and issues with no recorded Verify event are left out; the counts say how many issues each average rests on.
+function agingStats(){
+  var cv = { sum:0, n:0 }, vr = { sum:0, n:0 }, DAY = 86400000;
+  issues.forEach(function(iss){
+    if(iss.status==="Cancelled") return;
+    var firstVerify = null, lastResolved = null;
+    (iss.progress||[]).filter(isStatusLog).slice().sort(function(a,b){ return a.ts-b.ts; }).forEach(function(p){
+      var to = statusTargetOf(p);
+      if(to==="Verify" && !firstVerify) firstVerify = p;
+      if(to==="Resolved") lastResolved = p;
+    });
+    if(firstVerify){ cv.sum += Math.max(0, firstVerify.ts - iss.ts); cv.n++; }
+    if(iss.status==="Resolved" && firstVerify && lastResolved && lastResolved.ts >= firstVerify.ts){ vr.sum += lastResolved.ts - firstVerify.ts; vr.n++; }
+  });
+  return { cv: cv.n ? cv.sum/cv.n/DAY : null, cvN: cv.n, vr: vr.n ? vr.sum/vr.n/DAY : null, vrN: vr.n };
+}
+function fmtDays(x){ return x===null ? "—" : (x>=100 ? String(Math.round(x)) : (x<0.05 ? "<0.1" : x.toFixed(1))); }
+function renderAging(){
+  var a = agingStats();
+  function put(id, val, n, tip){
+    document.getElementById(id+"v").textContent = fmtDays(val);
+    document.getElementById(id+"u").textContent = val===null ? "no data yet" : "days ("+n+")";
+    document.getElementById(id).title = tip;
+  }
+  put("agCV", a.cv, a.cvN, "Average days from creation to the first time the issue was sent to Verify"+(a.cvN ? " — "+a.cvN+" issue"+(a.cvN!==1?"s":"") : "")+". Cancelled issues are not included.");
+  put("agVR", a.vr, a.vrN, "Average days from the first Verify to Resolved"+(a.vrN ? " — "+a.vrN+" issue"+(a.vrN!==1?"s":"") : "")+". Only issues that were verified and are now Resolved; ones closed with “Resolve all” (no Verify step) are not included.");
 }
 function progressNotes(iss){ return (iss.progress||[]).filter(function(p){ return !isStatusLog(p); }); }
 function latestUpdate(iss){
@@ -2512,7 +2573,7 @@ function editProgressEntry(id, ts, newNote){
   var iss = issues.find(function(i){ return i.id===id; });
   if(!iss) return;
   var newProgress = (iss.progress||[]).map(function(p){
-    if(p.ts!==ts) return p; var e = { ts:p.ts, note:newNote, by:p.by||"Unknown" }; if(p.kind) e.kind = p.kind; return e;
+    if(p.ts!==ts) return p; var e = { ts:p.ts, note:newNote, by:p.by||"Unknown" }; if(p.kind) e.kind = p.kind; if(p.from) e.from = p.from; if(p.to) e.to = p.to; return e;      // editing the words never changes what the entry IS
   });
   saveProgressArray(id, newProgress);
 }
@@ -3078,6 +3139,7 @@ function refreshStats(){
   var fresh = openAll.filter(function(i){ return (nowMs - i.ts) <= 24*3600*1000; }).length;
   var open = openAll.length - fresh;
   document.getElementById("statFresh").textContent = fresh;
+  renderAging();
   var verifying = issues.filter(function(i){return i.status==="Verify";}).length;
   var submitted = issues.filter(function(i){return i.status==="Submitted A85";}).length;
   var resolved = issues.filter(function(i){return i.status==="Resolved";}).length;
@@ -3338,7 +3400,7 @@ function inChunks(items, size, worker){
 }
 function resolveSiteIssues(site, ids, note){
   var now = Date.now(), who = currentUser || "Unknown", text = "Site resolved: "+note;
-  var entry = function(){ return { ts:now, note:text, by:who, kind:"status" }; };
+  var entry = function(){ return { ts:now, note:text, by:who, kind:"status", to:"Resolved" }; };
   if(FIREBASE_ENABLED){
     // one small transaction per issue: anything someone else already resolved is skipped, never double-logged
     return inChunks(ids, 25, function(id){
