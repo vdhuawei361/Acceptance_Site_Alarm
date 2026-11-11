@@ -63,6 +63,21 @@
   .ag.cv .v b{color:var(--verify); text-shadow:0 0 10px rgba(110,168,255,.4);}
   .ag.vr .v b{color:var(--closed); text-shadow:0 0 10px rgba(51,209,122,.4);}
   .ag .u{font-size:9px; color:var(--subtext);}
+  .ag{cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .agsheet{max-height:86vh;}
+  .ag-head{display:flex; justify-content:space-between; align-items:center; position:sticky; top:-18px; margin:-18px -18px 8px; padding:16px 18px 8px; background:var(--panelSolid); z-index:2;}
+  .ag-head h3{margin:0;}
+  .ag-x{width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--inputBg); color:var(--muted); font-size:13px;}
+  .ag-sum{font-size:12px; line-height:1.5; color:var(--text); margin-bottom:6px;}
+  .ag-sum b{color:var(--accent); font-family:var(--mono);}
+  .agg{margin:12px 0 4px;}
+  .agg-h{font-size:12px; font-weight:800; color:var(--text);}
+  .agg-h b{color:var(--accent); font-family:var(--mono);}
+  .agg-n{font-size:11px; line-height:1.45; color:var(--subtext); margin:2px 0 6px;}
+  .agg-i{display:flex; align-items:baseline; gap:8px; width:100%; text-align:left; background:var(--inputBg); border:1px solid var(--border); border-radius:8px; padding:6px 8px; margin-bottom:4px; color:var(--text); font-size:11px;}
+  .agg-i .id{font-family:var(--mono); color:var(--accent); font-weight:700; flex:0 0 auto;}
+  .agg-i .t{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .agg-i .st{flex:0 0 auto; color:var(--muted); font-size:10px;}
   @media (max-width:380px){ .ag .l{font-size:7px; letter-spacing:.3px;} .ag{padding:4px 6px 5px;} }
   .stat{flex:1; text-align:center; border-radius:10px; padding:6px 4px; border:1px solid;
     position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px var(--shadow);}
@@ -458,8 +473,8 @@
     <div class="stat total"><div class="n" id="statTotal">0</div><div class="l" id="statTotalLabel">TOTAL</div></div>
   </div>
   <div class="aging">
-    <div class="ag cv" id="agCV"><div class="l">AVG · CREATE → VERIFY</div><div class="v"><b id="agCVv">—</b><span class="u" id="agCVu">no data yet</span></div></div>
-    <div class="ag vr" id="agVR"><div class="l">AVG · VERIFY → RESOLVE</div><div class="v"><b id="agVRv">—</b><span class="u" id="agVRu">no data yet</span></div></div>
+    <div class="ag cv" id="agCV" role="button" tabindex="0"><div class="l">AVG · CREATE → VERIFY</div><div class="v"><b id="agCVv">—</b><span class="u" id="agCVu">no data yet</span></div></div>
+    <div class="ag vr" id="agVR" role="button" tabindex="0"><div class="l">AVG · VERIFY → RESOLVE</div><div class="v"><b id="agVRv">—</b><span class="u" id="agVRu">no data yet</span></div></div>
   </div>
 </header>
 
@@ -618,6 +633,15 @@
       <button class="btn-cancel" id="formCancel">Cancel</button>
       <button class="btn-save" id="formSave">Save</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="agingOverlay">
+  <div class="sheet agsheet">
+    <div class="ag-head"><h3 id="agTitle"></h3><button type="button" class="ag-x" id="agX" aria-label="Close">✕</button></div>
+    <div class="ag-sum" id="agSum"></div>
+    <div id="agBody"></div>
+    <div class="btnrow"><button class="btn-cancel" id="agClose">Close</button></div>
   </div>
 </div>
 
@@ -1111,31 +1135,94 @@ function statusTargetOf(p){
 //   verify → resolve  = that first Verify until it was finally Resolved (issues that are Resolved now and went through Verify)
 // Together they add up to the whole life of an issue, rework included. Cancelled issues, issues resolved with "Resolve all"
 // (no Verify step) and issues with no recorded Verify event are left out; the counts say how many issues each average rests on.
-function agingStats(){
-  var cv = { sum:0, n:0 }, vr = { sum:0, n:0 }, DAY = 86400000;
+function isSiteResolveEntry(p){ return /^site resolved:/i.test(String((p && p.note) || "").trim()); }
+// Sorts every issue into "counted" or one named reason for not being counted, for both averages.
+function agingAnalyze(){
+  var r = { cv:{ ok:[], notYet:[], noRecord:[], cancelled:[], sum:0 }, vr:{ ok:[], bulk:[], noVerify:[], noResolved:[], order:[], total:0, sum:0 } };
   issues.forEach(function(iss){
-    if(iss.status==="Cancelled") return;
+    if(iss.status==="Cancelled"){ r.cv.cancelled.push(iss); return; }
     var firstVerify = null, lastResolved = null;
     (iss.progress||[]).filter(isStatusLog).slice().sort(function(a,b){ return a.ts-b.ts; }).forEach(function(p){
       var to = statusTargetOf(p);
       if(to==="Verify" && !firstVerify) firstVerify = p;
       if(to==="Resolved") lastResolved = p;
     });
-    if(firstVerify){ cv.sum += Math.max(0, firstVerify.ts - iss.ts); cv.n++; }
-    if(iss.status==="Resolved" && firstVerify && lastResolved && lastResolved.ts >= firstVerify.ts){ vr.sum += lastResolved.ts - firstVerify.ts; vr.n++; }
+    if(firstVerify){ r.cv.ok.push(iss); r.cv.sum += Math.max(0, firstVerify.ts - iss.ts); }
+    else if(iss.status==="Open") r.cv.notYet.push(iss);              // simply hasn't reached Verify yet
+    else r.cv.noRecord.push(iss);                                    // is past Open, but nothing in its timeline says it was sent to Verify
+    if(iss.status==="Resolved"){
+      r.vr.total++;
+      if(!firstVerify){ (lastResolved && isSiteResolveEntry(lastResolved) ? r.vr.bulk : r.vr.noVerify).push(iss); }
+      else if(!lastResolved) r.vr.noResolved.push(iss);
+      else if(lastResolved.ts < firstVerify.ts) r.vr.order.push(iss);
+      else { r.vr.ok.push(iss); r.vr.sum += lastResolved.ts - firstVerify.ts; }
+    }
   });
-  return { cv: cv.n ? cv.sum/cv.n/DAY : null, cvN: cv.n, vr: vr.n ? vr.sum/vr.n/DAY : null, vrN: vr.n };
+  return r;
 }
+// Average aging in days, from the timeline:
+//   create → verify   = created until the FIRST time it was sent to Verify (every issue that has been sent to Verify)
+//   verify → resolve  = that first Verify until it was finally Resolved (issues that are Resolved now and went through Verify)
+// Together they add up to the whole life of an issue, rework included. See agingAnalyze for what is left out and why.
+function agingStats(){
+  var a = agingAnalyze(), DAY = 86400000;
+  return { cv: a.cv.ok.length ? a.cv.sum/a.cv.ok.length/DAY : null, cvN: a.cv.ok.length,
+           vr: a.vr.ok.length ? a.vr.sum/a.vr.ok.length/DAY : null, vrN: a.vr.ok.length, vrOf: a.vr.total };
+}
+function agingGroup(title, list, note){
+  if(!list.length) return "";
+  return '<div class="agg"><div class="agg-h">'+esc(title)+' <b>'+list.length+'</b></div>'+(note ? '<div class="agg-n">'+esc(note)+'</div>' : '')+
+    list.slice(0,100).map(function(iss){
+      return '<button type="button" class="agg-i" data-id="'+esc(iss.id)+'"><span class="id">'+esc(iss.id)+'</span><span class="t">'+esc(iss.site)+' · '+esc(iss.issue)+'</span><span class="st">'+esc(iss.status)+'</span></button>';
+    }).join("")+(list.length>100 ? '<div class="agg-n">…and '+(list.length-100)+' more</div>' : '')+'</div>';
+}
+function openAgingSheet(which){
+  var a = agingAnalyze(), st = agingStats(), html = "", title, sum;
+  if(which==="cv"){
+    var c = a.cv, nCounted = c.ok.length, total = nCounted + c.notYet.length + c.noRecord.length + c.cancelled.length;
+    title = "Create → Verify";
+    sum = (nCounted ? "Average <b>"+fmtDays(st.cv)+" days</b>, based on <b>"+nCounted+"</b> of the "+total+" issues: every issue that has been sent to Verify (whatever its status is now)." : "No issue has been sent to Verify yet.");
+    html += agingGroup("Not sent to Verify yet", c.notYet, "Still Open. They join the average once they are sent to Verify.");
+    html += agingGroup("No record of being sent to Verify", c.noRecord, "Past Open, but the timeline has no “Sent for verification” entry (status set directly, imported or restored, or the entry was edited or deleted).");
+    html += agingGroup("Cancelled", c.cancelled, "Cancelled issues are never included.");
+  }else{
+    var v = a.vr, n = v.ok.length;
+    title = "Verify → Resolve";
+    sum = v.total ? "Average <b>"+(n ? fmtDays(st.vr)+" days" : "—")+"</b>, based on <b>"+n+"</b> of the <b>"+v.total+"</b> Resolved issues. The others can't be measured:" : "No issue is Resolved yet.";
+    html += agingGroup("Closed with “Resolve all”, never sent to Verify", v.bulk, "They skipped the Verify step, so there is no Verify → Resolve time.");
+    html += agingGroup("No record of being sent to Verify", v.noVerify, "Resolved, but the timeline has no “Sent for verification” entry (status set directly, imported or restored, or the entry was edited or deleted).");
+    html += agingGroup("No record of being Resolved", v.noResolved, "Sent to Verify, but no entry says when it was resolved.");
+    html += agingGroup("Dates out of order", v.order, "The Resolved entry is dated before the Verify entry, so no time can be measured.");
+  }
+  document.getElementById("agTitle").textContent = title;
+  document.getElementById("agSum").innerHTML = sum;
+  document.getElementById("agBody").innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll("#agBody .agg-i"), function(b){
+    b.addEventListener("click", function(){                      // jump to that issue in the list
+      document.getElementById("agingOverlay").classList.remove("show");
+      var inp = document.getElementById("searchInput"); inp.value = b.getAttribute("data-id"); inp.dispatchEvent(new Event("input"));
+      document.querySelector('.tab[data-view="list"]').click();
+    });
+  });
+  document.getElementById("agingOverlay").classList.add("show");
+}
+["agCV","agVR"].forEach(function(id){
+  var el = document.getElementById(id), which = id==="agCV" ? "cv" : "vr";
+  el.addEventListener("click", function(){ openAgingSheet(which); });
+  el.addEventListener("keydown", function(e){ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); openAgingSheet(which); } });
+});
+["agClose","agX"].forEach(function(id){ document.getElementById(id).addEventListener("click", function(){ document.getElementById("agingOverlay").classList.remove("show"); }); });
 function fmtDays(x){ return x===null ? "—" : (x>=100 ? String(Math.round(x)) : (x<0.05 ? "<0.1" : x.toFixed(1))); }
 function renderAging(){
   var a = agingStats();
-  function put(id, val, n, tip){
+  function put(id, val, n, of, tip){
     document.getElementById(id+"v").textContent = fmtDays(val);
-    document.getElementById(id+"u").textContent = val===null ? "no data yet" : "days ("+n+")";
-    document.getElementById(id).title = tip;
+    var u = val===null ? (of ? "no data yet · 0 of "+of+" resolved" : "no data yet") : "days ("+n+(of && of!==n ? " of "+of : "")+")";
+    document.getElementById(id+"u").textContent = u;
+    document.getElementById(id).title = tip + " Tap to see which issues are included.";
   }
-  put("agCV", a.cv, a.cvN, "Average days from creation to the first time the issue was sent to Verify"+(a.cvN ? " — "+a.cvN+" issue"+(a.cvN!==1?"s":"") : "")+". Cancelled issues are not included.");
-  put("agVR", a.vr, a.vrN, "Average days from the first Verify to Resolved"+(a.vrN ? " — "+a.vrN+" issue"+(a.vrN!==1?"s":"") : "")+". Only issues that were verified and are now Resolved; ones closed with “Resolve all” (no Verify step) are not included.");
+  put("agCV", a.cv, a.cvN, 0, "Average days from creation to the first time the issue was sent to Verify"+(a.cvN ? " — "+a.cvN+" issue"+(a.cvN!==1?"s":"") : "")+". Cancelled issues are not included.");
+  put("agVR", a.vr, a.vrN, a.vrOf, "Average days from the first Verify to Resolved"+(a.vrN ? " — "+a.vrN+" of the "+a.vrOf+" Resolved issues" : "")+". Only issues that were verified and are now Resolved can be measured.");
 }
 function progressNotes(iss){ return (iss.progress||[]).filter(function(p){ return !isStatusLog(p); }); }
 function latestUpdate(iss){
